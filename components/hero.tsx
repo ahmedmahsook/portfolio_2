@@ -91,7 +91,7 @@ export function Hero() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex flex-col">
             <span className="text-base font-bold tracking-[0.25em] text-foreground">
-              MONACO
+              FILMSOFMONACO
             </span>
             <span className="text-[9px] tracking-[0.35em] text-muted-foreground uppercase">
               Portfolio

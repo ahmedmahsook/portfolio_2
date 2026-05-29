@@ -49,7 +49,7 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="text-base font-bold tracking-[0.2em] text-foreground">
-              MONACO
+               MONACO
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
