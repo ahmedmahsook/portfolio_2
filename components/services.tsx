@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import { SectionGlow } from "@/components/editorial-atmosphere"
+import { siteDivider, siteShell } from "@/lib/site-layout"
 
 const services = [
   {
@@ -52,17 +53,17 @@ export function Services() {
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
   return (
-    <section id="services" className="section-editorial py-32 relative overflow-hidden">
+    <section id="services" className="section-editorial py-24 sm:py-32 relative overflow-hidden">
       <SectionGlow variant="default" />
-      <div className="section-divider mb-24 lg:mb-32 mx-auto max-w-7xl px-6 relative z-[1]" />
+      <div className={`${siteDivider} mb-16 sm:mb-24 lg:mb-32 relative z-[1]`} />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-[1]">
+      <div className={`${siteShell} relative z-[1]`}>
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 32 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7 }}
-          className="text-center mb-16 lg:mb-20"
+          className="text-center mb-12 sm:mb-16 lg:mb-20"
         >
           <div className="flex items-center justify-center gap-4 mb-6">
             <span className="w-8 h-px bg-foreground/15" />
@@ -81,7 +82,7 @@ export function Services() {
               initial={{ opacity: 0, y: 32 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.7, delay: index * 0.1 }}
-              className="group relative p-8 lg:p-10 rounded-2xl glass card-surface hover-lift overflow-hidden"
+              className="group relative p-6 sm:p-8 lg:p-10 rounded-2xl glass card-surface hover-lift overflow-hidden"
             >
               <div className="absolute inset-0 bg-[oklch(0.56_0.145_42/0.04)] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 

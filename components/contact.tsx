@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import Link from "next/link"
 import { SectionGlow } from "@/components/editorial-atmosphere"
+import { siteDivider, siteShell, siteShellNarrow } from "@/lib/site-layout"
 
 const socials = [
   {
@@ -31,11 +32,11 @@ export function Contact() {
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
   return (
-    <section id="contact" className="section-editorial py-32 relative overflow-hidden">
+    <section id="contact" className="section-editorial py-24 sm:py-32 relative overflow-hidden">
       <SectionGlow variant="center" />
-      <div className="section-divider mb-24 lg:mb-32 mx-auto max-w-4xl px-6 relative z-[1]" />
+      <div className={`${siteDivider} mb-16 sm:mb-24 lg:mb-32 relative z-[1]`} />
 
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 relative z-[1]">
+      <div className={`${siteShellNarrow} relative z-[1]`}>
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 32 }}
@@ -51,7 +52,7 @@ export function Contact() {
           <h2 className="text-[clamp(2rem,6vw,3.5rem)] font-bold tracking-tight mb-6">
             {"Let's Create"} <span className="gradient-text">Together</span>
           </h2>
-          <p className="body-copy text-base mb-12 max-w-xl mx-auto">
+          <p className="body-copy text-base mb-10 sm:mb-12 max-w-none sm:max-w-xl mx-auto">
             Ready to bring your vision to life? {"I'm"} always excited to collaborate on projects that push creative boundaries.
           </p>
 
@@ -59,21 +60,32 @@ export function Contact() {
             initial={{ opacity: 0, y: 16 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="glass rounded-2xl p-8 md:p-10 mb-10 card-surface hover-lift text-left"
+            className="glass rounded-2xl p-6 sm:p-8 md:p-10 mb-8 sm:mb-10 card-surface hover-lift text-left"
           >
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid sm:grid-cols-3 gap-8">
               <div>
                 <h3 className="section-eyebrow mb-2">Email</h3>
                 <a
-                  href="mailto:hello@monaco.studio"
-                  className="text-foreground/80 hover:text-foreground transition-colors duration-400 text-lg"
+                  href="mailto:2004rahilmonaco@gmail.com"
+                  className="text-foreground/80 hover:text-foreground transition-colors duration-400 text-[15px] sm:text-base md:text-lg break-all"
                 >
-                  hello@monaco.studio
+                  2004rahilmonaco@gmail.com
+                </a>
+              </div>
+              <div>
+                <h3 className="section-eyebrow mb-2">Phone</h3>
+                <a
+                  href="tel:+917907776421"
+                  className="text-foreground/80 hover:text-foreground transition-colors duration-400 text-[15px] sm:text-base md:text-lg"
+                >
+                  +91 7907776421
                 </a>
               </div>
               <div>
                 <h3 className="section-eyebrow mb-2">Location</h3>
-                <p className="text-foreground/80 text-lg">Available Worldwide</p>
+                <p className="text-foreground/80 text-[15px] sm:text-base md:text-lg">
+                  Available Worldwide
+                </p>
               </div>
             </div>
           </motion.div>
@@ -82,7 +94,7 @@ export function Contact() {
             initial={{ opacity: 0, y: 16 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.35 }}
-            className="flex justify-center gap-4"
+            className="flex justify-center gap-4 sm:gap-5"
           >
             {socials.map((social) => (
               <Link
@@ -90,7 +102,7 @@ export function Contact() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-12 h-12 rounded-full glass-subtle flex items-center justify-center text-muted-foreground hover:text-foreground card-surface transition-all duration-400 hover:scale-105"
+                className="w-14 h-14 sm:w-12 sm:h-12 rounded-full glass-subtle flex items-center justify-center text-muted-foreground hover:text-foreground card-surface transition-all duration-400 hover:scale-105"
                 aria-label={social.name}
               >
                 {social.icon}
@@ -106,9 +118,9 @@ export function Contact() {
 export function Footer() {
   return (
     <footer className="py-8 relative">
-      <div className="section-divider mb-8 max-w-7xl mx-auto px-6" />
+      <div className={`${siteDivider} mb-8`} />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <div className={siteShell}>
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-[11px] text-muted-foreground tracking-wider">
             © {new Date().getFullYear()} Moideen Rahil Monaco. All rights reserved.

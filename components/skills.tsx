@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
 import { SectionGlow } from "@/components/editorial-atmosphere"
+import { siteDivider, siteShell } from "@/lib/site-layout"
 
 const skills = [
   { name: "After Effects", level: 95, icon: "Ae" },
@@ -18,11 +19,11 @@ export function Skills() {
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
   return (
-    <section id="skills" className="section-editorial py-32 relative overflow-hidden">
+    <section id="skills" className="section-editorial py-24 sm:py-32 relative overflow-hidden">
       <SectionGlow variant="warm-left" />
-      <div className="section-divider mb-24 lg:mb-32 mx-auto max-w-7xl px-6 relative z-[1]" />
+      <div className={`${siteDivider} mb-16 sm:mb-24 lg:mb-32 relative z-[1]`} />
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-[1]">
+      <div className={`${siteShell} relative z-[1]`}>
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 32 }}

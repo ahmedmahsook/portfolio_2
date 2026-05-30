@@ -35,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${poppins.variable} bg-background`}>
-      <body className="overflow-x-hidden">
+      <body className="min-w-0 w-full overflow-x-clip">
         <div className="noise-overlay" aria-hidden="true" />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

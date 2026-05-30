@@ -10,7 +10,7 @@ export function EditorialAtmosphere() {
   const y3 = useTransform(scrollYProgress, [0, 0.5, 1], [0, -60, 40])
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
+    <div className="editorial-atmosphere-clip fixed inset-0 overflow-hidden pointer-events-none z-0" aria-hidden="true">
       {/* Cream → ivory base wash */}
       <div className="absolute inset-0 editorial-base-gradient" />
 

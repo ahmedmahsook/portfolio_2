@@ -3,6 +3,7 @@
 import { motion, useInView } from "framer-motion"
 import { useRef, useState, useEffect } from "react"
 import { SectionGlow } from "@/components/editorial-atmosphere"
+import { siteDivider, siteShellNarrow } from "@/lib/site-layout"
 
 const testimonials = [
   {
@@ -41,11 +42,11 @@ export function Testimonials() {
   }, [])
 
   return (
-    <section className="section-editorial py-32 relative overflow-hidden">
+    <section className="section-editorial py-24 sm:py-32 relative overflow-hidden">
       <SectionGlow variant="default" />
-      <div className="section-divider mb-24 lg:mb-32 mx-auto max-w-4xl px-6 relative z-[1]" />
+      <div className={`${siteDivider} mb-16 sm:mb-24 lg:mb-32 relative z-[1]`} />
 
-      <div className="max-w-4xl mx-auto px-6 lg:px-8 relative z-[1]">
+      <div className={`${siteShellNarrow} relative z-[1]`}>
         <motion.div
           ref={ref}
           initial={{ opacity: 0, y: 32 }}
@@ -78,7 +79,7 @@ export function Testimonials() {
 
               <div className="text-5xl font-bold text-foreground/[0.06] leading-none mb-4">&ldquo;</div>
 
-              <blockquote className="text-lg md:text-xl font-medium leading-relaxed mb-8 text-foreground/90 max-w-2xl mx-auto">
+              <blockquote className="text-base sm:text-lg md:text-xl font-medium leading-relaxed mb-8 text-foreground/90 max-w-none sm:max-w-2xl mx-auto px-1">
                 {testimonial.content}
               </blockquote>
 
@@ -90,17 +91,21 @@ export function Testimonials() {
           ))}
         </div>
 
-        <div className="flex justify-center gap-2 mt-10">
+        <div className="flex justify-center gap-1 sm:gap-2 mt-10">
           {testimonials.map((_, index) => (
             <button
               key={index}
               type="button"
               onClick={() => setActive(index)}
-              className={`h-px rounded-full transition-all duration-500 ${
-                active === index ? "bg-accent w-10" : "bg-accent/25 w-6 hover:bg-accent/45"
-              }`}
+              className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label={`Go to testimonial ${index + 1}`}
-            />
+            >
+              <span
+                className={`block h-px rounded-full transition-all duration-500 ${
+                  active === index ? "bg-accent w-10" : "bg-accent/25 w-6"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>

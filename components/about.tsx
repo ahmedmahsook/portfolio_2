@@ -4,6 +4,7 @@ import { motion, useInView } from "framer-motion"
 import Image from "next/image"
 import { useRef } from "react"
 import { SectionGlow } from "@/components/editorial-atmosphere"
+import { siteDivider, siteShell } from "@/lib/site-layout"
 
 const ABOUT_IMAGE = "/about.jpeg"
 
@@ -12,19 +13,19 @@ export function About() {
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
   return (
-    <section id="about" className="section-editorial py-32 lg:py-40 relative cinematic-border-top overflow-hidden">
+    <section id="about" className="section-editorial py-24 sm:py-32 lg:py-40 relative cinematic-border-top overflow-hidden">
       <SectionGlow variant="warm-left" />
-      <div className="section-divider mb-24 lg:mb-32 mx-auto max-w-7xl px-6 relative z-[1]" />
+      <div className={`${siteDivider} mb-16 sm:mb-24 lg:mb-32 relative z-[1]`} />
 
       <span
-        className="absolute top-28 right-6 lg:right-12 z-[1] text-[clamp(5rem,12vw,9rem)] font-bold text-foreground/[0.02] pointer-events-none select-none"
+        className="absolute top-28 right-4 sm:right-6 lg:right-12 z-[1] text-[clamp(5rem,12vw,9rem)] font-bold text-foreground/[0.02] pointer-events-none select-none"
         aria-hidden="true"
       >
         02
       </span>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-[1]">
-        <div ref={ref} className="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+      <div className={`${siteShell} relative z-[1]`}>
+        <div ref={ref} className="grid lg:grid-cols-2 gap-12 sm:gap-16 lg:gap-20 items-center">
           <motion.div
             initial={{ opacity: 0, x: -40 }}
             animate={isInView ? { opacity: 1, x: 0 } : {}}
@@ -36,7 +37,7 @@ export function About() {
               aria-hidden="true"
             />
 
-            <div className="relative aspect-[4/5] max-w-lg mx-auto lg:mx-0 rounded-2xl overflow-hidden border border-border group card-surface hover-lift">
+            <div className="relative aspect-[4/5] w-full max-w-none sm:max-w-lg mx-auto lg:mx-0 rounded-2xl overflow-hidden border border-border group card-surface hover-lift">
               <Image
                 src={ABOUT_IMAGE}
                 alt="Moideen Rahil Monaco — Creative Director at work with camera and gimbal"
@@ -61,7 +62,7 @@ export function About() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={isInView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.7, delay: 0.4 }}
-              className="absolute -bottom-5 -right-4 lg:-right-6 glass rounded-xl px-6 py-5 hover-lift"
+              className="absolute -bottom-4 right-2 sm:-bottom-5 sm:-right-4 lg:-right-6 glass rounded-xl px-5 sm:px-6 py-4 sm:py-5 hover-lift"
             >
               <div className="text-3xl font-bold text-foreground">3+</div>
               <div className="text-[10px] text-muted-foreground mt-1 tracking-widest uppercase">
@@ -83,7 +84,7 @@ export function About() {
               Transforming Ideas Into{" "}
               <span className="gradient-text">Visual Masterpieces</span>
             </h2>
-            <div className="space-y-6 body-copy max-w-xl">
+            <div className="space-y-5 sm:space-y-6 body-copy max-w-none lg:max-w-xl">
               <p>
                 I&apos;m a passionate video editor and performance marketer with a deep understanding of visual storytelling. My work bridges the gap between creative artistry and strategic marketing, delivering content that not only looks stunning but also drives measurable results.
               </p>
@@ -95,7 +96,7 @@ export function About() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mt-12">
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-4 mt-10 sm:mt-12">
               {[
                 { number: "100+", label: "Projects" },
                 { number: "20+", label: "Clients" },
@@ -106,7 +107,7 @@ export function About() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={isInView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.6 + index * 0.1 }}
-                  className="text-center p-4 rounded-xl glass-subtle card-surface hover-lift"
+                  className="text-center p-3 sm:p-4 rounded-xl glass-subtle card-surface hover-lift"
                 >
                   <div className="text-2xl font-bold text-foreground">{stat.number}</div>
                   <div className="text-[10px] text-muted-foreground mt-1.5 tracking-widest uppercase">
