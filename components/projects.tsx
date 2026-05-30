@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, useInView, AnimatePresence } from "framer-motion"
 import { SectionGlow } from "@/components/editorial-atmosphere"
 
-import { projects, Project } from "./project-data"
+import { projects as staticProjects, Project } from "./project-data"
 import { siteDivider, siteShell } from "@/lib/site-layout"
 
 type PremiumProject = Project & {
@@ -12,7 +12,67 @@ type PremiumProject = Project & {
   featuredRank?: number
 }
 
-const premiumTemplates = [
+/* ═══════════════════════════════════════════════════════
+   TEMPLATES — enough for 14+ videos (cycles if more added)
+   ═══════════════════════════════════════════════════════ */
+
+const allTemplates = [
+  {
+    title: "Midnight Motion",
+    subtitle: "A Study in Movement",
+    category: "Editing" as const,
+    description:
+      "Cinematic exploration of movement and shadow — crafted through meticulous editorial pacing and dramatic color grading.",
+    tags: ["Premiere Pro", "Color Grading", "Cinematic"],
+  },
+  {
+    title: "Frame Theory",
+    subtitle: "Visual Storytelling",
+    category: "Motion" as const,
+    description:
+      "Dynamic motion graphics sequence blending typography, form, and rhythm into a compelling visual narrative.",
+    tags: ["After Effects", "Motion Design", "Typography"],
+  },
+  {
+    title: "Visual Pulse",
+    subtitle: "Commercial Campaign",
+    category: "Marketing" as const,
+    description:
+      "High-energy commercial piece engineered for maximum engagement — driving brand awareness through visual impact.",
+    tags: ["Paid Social", "Brand Strategy", "Conversion"],
+  },
+  {
+    title: "Motion Narrative",
+    subtitle: "Editorial Short",
+    category: "Editing" as const,
+    description:
+      "Intimate editorial short capturing raw emotion through deliberate pacing and atmospheric sound design.",
+    tags: ["Documentary", "Sound Design", "Storytelling"],
+  },
+  {
+    title: "Cinematic Flow",
+    subtitle: "Brand Film",
+    category: "Motion" as const,
+    description:
+      "Fluid brand film merging sleek transitions with bold compositions — a visual identity brought to life.",
+    tags: ["Direction", "3D Animation", "Branding"],
+  },
+  {
+    title: "Golden Hour",
+    subtitle: "Performance Ad",
+    category: "Marketing" as const,
+    description:
+      "Performance-driven ad campaign bathed in warm tones, optimized for scroll-stopping impact across platforms.",
+    tags: ["Ad Creative", "A/B Testing", "ROI Driven"],
+  },
+  {
+    title: "Silent Frames",
+    subtitle: "Art Direction",
+    category: "Editing" as const,
+    description:
+      "Contemplative art piece exploring stillness within motion — every frame composed with editorial precision.",
+    tags: ["Art Direction", "Post-Production", "Grading"],
+  },
   {
     title: "Royal Caribbean",
     subtitle: "Premium Editorial Cut",
@@ -53,7 +113,27 @@ const premiumTemplates = [
       "An immersive chromatic journey through light, texture, and rhythm — refined in post for a high-end cinematic finish.",
     tags: ["Color Work", "Editorial", "Cinematic"],
   },
+  {
+    title: "Aether Drift",
+    subtitle: "Ambient Synthesis",
+    category: "Motion" as const,
+    description:
+      "A continuous flow of abstract particle dynamics and ambient lighting, crafted for high-end luxury digital displays.",
+    tags: ["Particles", "Houdini", "Atmospheric"],
+  },
+  {
+    title: "Luminous Shift",
+    subtitle: "Editorial Lookbook",
+    category: "Marketing" as const,
+    description:
+      "A visually striking lookbook campaign featuring high contrast aesthetics and bold color blocking for digital channels.",
+    tags: ["Lookbook", "Direct Response", "Social Ad"],
+  },
 ]
+
+/* ═══════════════════════════════════════════════════════
+   VIDEO PATH HELPERS
+   ═══════════════════════════════════════════════════════ */
 
 function toVideoBaseName(filename: string) {
   return filename.replace(/\.[^/.]+$/, "")
@@ -73,12 +153,14 @@ function playbackSrc(videoPath: string) {
   return `${dir}/opt_${base}.mp4`
 }
 
-function buildPremiumProjectsFromVideos(videoPaths: string[], startingId: number): PremiumProject[] {
+function buildProjectsFromVideos(videoPaths: string[]): PremiumProject[] {
+  console.log(`[projects] Building project cards for ${videoPaths.length} videos`)
+
   return videoPaths.map((videoPath, idx) => {
-    const t = premiumTemplates[idx % premiumTemplates.length]
+    const t = allTemplates[idx % allTemplates.length]
 
     return {
-      id: startingId + idx,
+      id: idx + 1,
       title: t.title,
       subtitle: t.subtitle,
       category: t.category,
@@ -107,7 +189,7 @@ function ProjectCard({
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isVideoReady, setIsVideoReady] = useState(false)
-  const preferredSrc = project.featured ? playbackSrc(project.video) : project.video
+  const preferredSrc = playbackSrc(project.video)
   const [videoSrc, setVideoSrc] = useState(preferredSrc)
 
   return (
@@ -263,7 +345,7 @@ function ProjectModal({
   onClose: () => void
 }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const preferredSrc = project.featured ? playbackSrc(project.video) : project.video
+  const preferredSrc = playbackSrc(project.video)
   const [videoSrc, setVideoSrc] = useState(preferredSrc)
 
   useEffect(() => {
@@ -375,45 +457,52 @@ function ProjectModal({
 
 export function Projects() {
   const [selectedProject, setSelectedProject] = useState<PremiumProject | null>(null)
-  const [allProjects, setAllProjects] = useState<PremiumProject[]>(() => projects as PremiumProject[])
+  const [allProjects, setAllProjects] = useState<PremiumProject[]>(() => {
+    // Use static data as initial fallback
+    const initial = staticProjects as PremiumProject[]
+    console.log(`[projects] Initial static projects: ${initial.length}`)
+    return initial
+  })
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadPremiumVideos() {
+    async function loadAllVideos() {
       try {
+        console.log("[projects] Fetching /api/videos...")
         const res = await fetch("/api/videos", { cache: "no-store" })
-        if (!res.ok) return
+        if (!res.ok) {
+          console.error(`[projects] API returned ${res.status}`)
+          return
+        }
         const data = (await res.json()) as { videos?: string[] }
         const paths = Array.isArray(data.videos) ? data.videos : []
 
-        const base = projects as PremiumProject[]
-        const existingVideoSet = new Set(base.map((p) => p.video))
-        const premium = buildPremiumProjectsFromVideos(
-          paths.filter(
-            (path) =>
-              !existingVideoSet.has(path) && !existingVideoSet.has(playbackSrc(path))
-          ),
-          base.length + 1
-        )
+        console.log(`[projects] API returned ${paths.length} videos:`, paths)
 
-        // Featured projects should appear first, without renumbering existing items.
-        const merged = [...base, ...premium].sort((a, b) => {
-          const ar = a.featuredRank ?? Number.POSITIVE_INFINITY
-          const br = b.featuredRank ?? Number.POSITIVE_INFINITY
-          if (ar !== br) return ar - br
-          return a.id - b.id
-        })
+        if (paths.length === 0) {
+          console.warn("[projects] No videos returned from API, keeping static data")
+          return
+        }
 
-        if (!cancelled) setAllProjects(merged)
-      } catch {
-        // Silent fail keeps the current projects list stable.
+        // Build ALL project cards from API videos — API is the single source of truth
+        const dynamicProjects = buildProjectsFromVideos(paths)
+
+        console.log(`[projects] Generated ${dynamicProjects.length} project cards`)
+
+        if (!cancelled) {
+          setAllProjects(dynamicProjects)
+          console.log(`[projects] Rendering ${dynamicProjects.length} project cards`)
+        }
+      } catch (err) {
+        console.error("[projects] Failed to fetch videos:", err)
+        // Keep static data as fallback
       }
     }
 
-    loadPremiumVideos()
+    loadAllVideos()
     return () => {
       cancelled = true
     }
@@ -443,7 +532,7 @@ export function Projects() {
           </h2>
         </motion.div>
 
-        {/* Project grid */}
+        {/* Project grid — NO artificial limits, renders ALL projects */}
         <motion.div layout className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
           <AnimatePresence mode="popLayout">
             {allProjects.map((project, index) => (
