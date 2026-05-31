@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { motion, useInView, AnimatePresence } from "framer-motion"
 import { SectionGlow } from "@/components/editorial-atmosphere"
 
-import { projects as staticProjects, Project } from "./project-data"
+import { Project } from "./project-data"
 import { siteDivider, siteShell } from "@/lib/site-layout"
 import { videos } from "@/lib/videos"
 
@@ -155,9 +155,32 @@ function playbackSrc(videoPath: string) {
 }
 
 function buildProjectsFromVideos(videoPaths: string[]): PremiumProject[] {
-  console.log(`[projects] Building project cards for ${videoPaths.length} videos`)
+  // Deduplicate by base name (case-insensitive) — if both IMG_0019.MOV and
+  // IMG_0019.mp4 exist, keep only one (prefer .mp4 for web playback).
+  const byBase = new Map<string, string>()
+  for (const vp of videoPaths) {
+    const filename = vp.split("/").pop() ?? ""
+    const base = toVideoBaseName(filename).toLowerCase()
+    const existing = byBase.get(base)
+    if (!existing) {
+      byBase.set(base, vp)
+    } else {
+      // Prefer .mp4 over .mov/.MOV
+      const existingExt = existing.split(".").pop()?.toLowerCase() ?? ""
+      const currentExt = filename.split(".").pop()?.toLowerCase() ?? ""
+      if (currentExt === "mp4" && existingExt !== "mp4") {
+        byBase.set(base, vp)
+      }
+    }
+  }
 
-  return videoPaths.map((videoPath, idx) => {
+  const uniquePaths = Array.from(byBase.values())
+
+  console.log(`total videos detected: ${videoPaths.length}`)
+  console.log(`total projects generated: ${uniquePaths.length}`)
+  console.log(`total unique projects rendered: ${uniquePaths.length}`)
+
+  return uniquePaths.map((videoPath, idx) => {
     const t = allTemplates[idx % allTemplates.length]
 
     return {
