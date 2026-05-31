@@ -6,6 +6,7 @@ import { SectionGlow } from "@/components/editorial-atmosphere"
 
 import { projects as staticProjects, Project } from "./project-data"
 import { siteDivider, siteShell } from "@/lib/site-layout"
+import { videos } from "@/lib/videos"
 
 type PremiumProject = Project & {
   featured?: boolean
@@ -457,56 +458,13 @@ function ProjectModal({
 
 export function Projects() {
   const [selectedProject, setSelectedProject] = useState<PremiumProject | null>(null)
-  const [allProjects, setAllProjects] = useState<PremiumProject[]>(() => {
-    // Use static data as initial fallback
-    const initial = staticProjects as PremiumProject[]
-    console.log(`[projects] Initial static projects: ${initial.length}`)
-    return initial
+  const [allProjects] = useState<PremiumProject[]>(() => {
+    const dynamicProjects = buildProjectsFromVideos(videos)
+    console.log(`[projects] Built ${dynamicProjects.length} dynamic projects from static config`)
+    return dynamicProjects
   })
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadAllVideos() {
-      try {
-        console.log("[projects] Fetching /api/videos...")
-        const res = await fetch("/api/videos", { cache: "no-store" })
-        if (!res.ok) {
-          console.error(`[projects] API returned ${res.status}`)
-          return
-        }
-        const data = (await res.json()) as { videos?: string[] }
-        const paths = Array.isArray(data.videos) ? data.videos : []
-
-        console.log(`[projects] API returned ${paths.length} videos:`, paths)
-
-        if (paths.length === 0) {
-          console.warn("[projects] No videos returned from API, keeping static data")
-          return
-        }
-
-        // Build ALL project cards from API videos — API is the single source of truth
-        const dynamicProjects = buildProjectsFromVideos(paths)
-
-        console.log(`[projects] Generated ${dynamicProjects.length} project cards`)
-
-        if (!cancelled) {
-          setAllProjects(dynamicProjects)
-          console.log(`[projects] Rendering ${dynamicProjects.length} project cards`)
-        }
-      } catch (err) {
-        console.error("[projects] Failed to fetch videos:", err)
-        // Keep static data as fallback
-      }
-    }
-
-    loadAllVideos()
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   return (
     <section id="projects" className="section-editorial py-24 sm:py-32 relative overflow-hidden">
