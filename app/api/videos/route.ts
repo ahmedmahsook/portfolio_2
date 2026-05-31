@@ -1,9 +1,10 @@
 import { readdir } from "node:fs/promises"
-import { basename, extname } from "node:path"
+import { join, basename, extname } from "node:path"
 
 export const runtime = "nodejs"
 
-const SUPPORTED_EXTENSIONS = new Set([".mp4", ".mov", ".webm"])
+// Supported extensions: .mp4, .MP4, .mov, .MOV
+const SUPPORTED_EXTENSIONS = new Set([".mp4", ".mov"])
 
 function isVideoFile(file: string) {
   const ext = extname(file).toLowerCase()
@@ -20,7 +21,15 @@ function videoBaseName(file: string) {
 }
 
 async function listVideoPaths(subdir: string, urlPrefix: string) {
-  const dir = `${process.cwd()}/public/${subdir}`
+  // Use static branching so Vercel Node File Trace (NFT) statically compiles public/video/ and public/videos/ paths.
+  let dir: string
+  if (subdir === "video") {
+    dir = join(process.cwd(), "public", "video")
+  } else if (subdir === "videos") {
+    dir = join(process.cwd(), "public", "videos")
+  } else {
+    dir = join(process.cwd(), "public", subdir)
+  }
 
   try {
     const files = await readdir(dir)
@@ -39,7 +48,7 @@ async function listVideoPaths(subdir: string, urlPrefix: string) {
       if (!existing) {
         byBase.set(base, f)
       } else {
-        // Prefer .mp4 over .mov/.webm
+        // Prefer .mp4 over .mov
         const existingExt = extname(existing).toLowerCase()
         const currentExt = extname(f).toLowerCase()
         if (currentExt === ".mp4" && existingExt !== ".mp4") {
@@ -52,15 +61,16 @@ async function listVideoPaths(subdir: string, urlPrefix: string) {
       .map((f) => `${urlPrefix}/${f}`)
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
 
-    console.log(`[videos API] Scanned ${subdir}/:`)
+    console.log(`[videos API] Scanned ${subdir}/ successfully:`)
+    console.log(`  - Resolved directory path: ${dir}`)
     console.log(`  - Total files found: ${files.length}`)
     console.log(`  - Source videos (excl opt_/thumb_): ${sourceVideos.length}`)
     console.log(`  - After dedup by base name: ${deduplicated.length}`)
     console.log(`  - Videos:`, deduplicated)
 
     return deduplicated
-  } catch {
-    console.log(`[videos API] Directory ${subdir}/ not found or unreadable`)
+  } catch (error: any) {
+    console.error(`[videos API] Error reading directory for subdir "${subdir}" at resolved path "${dir}":`, error)
     return []
   }
 }
@@ -75,3 +85,4 @@ export async function GET() {
 
   return Response.json({ videos })
 }
+
