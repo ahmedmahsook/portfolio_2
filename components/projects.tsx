@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { motion, useInView, AnimatePresence } from "framer-motion"
 import { SectionGlow } from "@/components/editorial-atmosphere"
 
@@ -225,7 +225,11 @@ function ProjectCard({
       transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={onSelect}
+      onClick={() => {
+        console.log(`[ProjectCard] Clicked project: "${project.title}" (id=${project.id})`)
+        console.log(`[ProjectCard] Video path: ${project.video}`)
+        onSelect()
+      }}
       data-cursor="project"
       className="group cursor-pointer"
     >
@@ -373,6 +377,8 @@ function ProjectModal({
   const [videoSrc, setVideoSrc] = useState(preferredSrc)
 
   useEffect(() => {
+    console.log(`[ProjectModal] Modal opened for: "${project.title}"`)
+    console.log(`[ProjectModal] Selected video path: ${videoSrc}`)
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
@@ -382,7 +388,7 @@ function ProjectModal({
       document.removeEventListener("keydown", handleKey)
       document.body.style.overflow = ""
     }
-  }, [onClose])
+  }, [onClose, project.title, videoSrc])
 
   return (
     <motion.div
