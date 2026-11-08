@@ -101,6 +101,9 @@ importers:
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
+      cloudinary:
+        specifier: ^2.11.0
+        version: 2.11.0
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -110,6 +113,9 @@ importers:
       date-fns:
         specifier: 4.1.0
         version: 4.1.0
+      dotenv:
+        specifier: ^18.0.9
+        version: 18.0.9
       embla-carousel-react:
         specifier: 8.6.0
         version: 8.6.0(react@19.2.4)
@@ -1334,6 +1340,10 @@ packages:
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
 
+  cloudinary@2.11.0:
+    resolution: {integrity: sha512-o2pAkDDqrzPFE/mn9GCfFjBIGQmPs++Ts6rtkFl4vY528DNHiMovKWjH16HBjeGa9iwI7eAad24aWN2emT0aww==}
+    engines: {node: '>=9'}
+
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
@@ -1409,6 +1419,11 @@ packages:
 
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
+
+  dotenv@18.0.9:
+    resolution: {integrity: sha512-3fVOW4cB02R066PUSwn8O4TJyz9NckQl7F81blIbaq9jKBm2tSmOKky7ZHIXzGvkVPXCSn6jkpziBPZdGFs8Tw==}
+    engines: {node: '>=12'}
+    hasBin: true
 
   electron-to-chromium@1.5.286:
     resolution: {integrity: sha512-9tfDXhJ4RKFNerfjdCcZfufu49vg620741MNs26a9+bhLThdB+plgMeou98CAaHu/WATj2iHOOHTp1hWtABj2A==}
@@ -2874,6 +2889,10 @@ snapshots:
 
   client-only@0.0.1: {}
 
+  cloudinary@2.11.0:
+    dependencies:
+      lodash: 4.17.23
+
   clsx@2.1.1: {}
 
   cmdk@1.1.1(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
@@ -2942,6 +2961,8 @@ snapshots:
     dependencies:
       '@babel/runtime': 7.28.6
       csstype: 3.2.3
+
+  dotenv@18.0.9: {}
 
   electron-to-chromium@1.5.286: {}
 

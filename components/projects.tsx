@@ -6,7 +6,7 @@ import { SectionGlow } from "@/components/editorial-atmosphere"
 
 import { Project } from "./project-data"
 import { siteDivider, siteShell } from "@/lib/site-layout"
-import { videos } from "@/lib/videos"
+import { videos, CLOUDINARY_CLOUD_NAME } from "@/lib/videos"
 
 type PremiumProject = Project & {
   featured?: boolean
@@ -133,25 +133,24 @@ const allTemplates = [
 ]
 
 /* ═══════════════════════════════════════════════════════
-   VIDEO PATH HELPERS
+   VIDEO PATH HELPERS (Cloudinary Enhanced with Local Fallback)
    ═══════════════════════════════════════════════════════ */
 
-function toVideoBaseName(filename: string) {
-  return filename.replace(/\.[^/.]+$/, "")
+function toVideoBaseName(pathOrId: string) {
+  const clean = pathOrId.replace(/^portfolio\//, "").replace(/^\/?video\//, "")
+  return clean.replace(/\.[^/.]+$/, "")
 }
 
 function posterForVideoPath(videoPath: string) {
-  const filename = videoPath.split("/").pop() ?? ""
-  const base = toVideoBaseName(filename)
-  const dir = videoPath.startsWith("/videos/") ? "/videos" : "/video"
-  return `${dir}/thumb_opt_${base}.jpg`
+  const base = toVideoBaseName(videoPath)
+  // High quality Cloudinary poster thumbnail with auto-format and optimization
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/f_auto,q_auto/portfolio/${base}_poster.jpg`
 }
 
 function playbackSrc(videoPath: string) {
-  const filename = videoPath.split("/").pop() ?? ""
-  const base = toVideoBaseName(filename)
-  const dir = videoPath.startsWith("/videos/") ? "/videos" : "/video"
-  return `${dir}/opt_${base}.mp4`
+  const base = toVideoBaseName(videoPath)
+  // Fast web playback with auto-format (f_auto) and perceptual quality compression (q_auto)
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto/portfolio/${base}.mp4`
 }
 
 function buildProjectsFromVideos(videoPaths: string[]): PremiumProject[] {
