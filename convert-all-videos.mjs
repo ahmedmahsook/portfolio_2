@@ -34,8 +34,9 @@ for (const file of videoFiles) {
     // We scale to maximum 1280px on the longest side to keep it HD but extremely lightweight
     // -vf "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'"
     // -crf 28 is a great sweet spot for high compression and decent quality
+    // -pix_fmt yuv420p ensures universal playback compatibility (especially for 10-bit source videos on iOS Safari/Chrome)
     execSync(
-      `"${ffmpegPath}" -i "${input}" -c:v libx264 -preset fast -crf 28 -c:a aac -b:a 128k -movflags +faststart -vf "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'" -y "${output}"`,
+      `"${ffmpegPath}" -i "${input}" -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p -c:a aac -b:a 128k -movflags +faststart -vf "scale='if(gt(iw,ih),min(1280,iw),-2)':'if(gt(iw,ih),-2,min(1280,ih))'" -y "${output}"`,
       { stdio: 'inherit' }
     );
     console.log(`✓ Success: opt_${nameWithoutExt}.mp4`);

@@ -46,8 +46,8 @@ export const projects: Project[] = [
     "subtitle": "Commercial Campaign",
     "category": "Marketing",
     "description": "High-energy commercial piece engineered for maximum engagement — driving brand awareness through visual impact.",
-    "video": "/video/opt_IMG_2652.mp4",
-    "poster": "/video/thumb_opt_IMG_2652.jpg",
+    "video": "/video/opt_IMG_2340.mp4",
+    "poster": "/video/thumb_opt_IMG_2340.jpg",
     "tags": [
       "Paid Social",
       "Brand Strategy",
@@ -60,8 +60,8 @@ export const projects: Project[] = [
     "subtitle": "Editorial Short",
     "category": "Editing",
     "description": "Intimate editorial short capturing raw emotion through deliberate pacing and atmospheric sound design.",
-    "video": "/video/opt_IMG_3024.mp4",
-    "poster": "/video/thumb_opt_IMG_3024.jpg",
+    "video": "/video/opt_IMG_2652.mp4",
+    "poster": "/video/thumb_opt_IMG_2652.jpg",
     "tags": [
       "Documentary",
       "Sound Design",
@@ -74,8 +74,8 @@ export const projects: Project[] = [
     "subtitle": "Brand Film",
     "category": "Motion",
     "description": "Fluid brand film merging sleek transitions with bold compositions — a visual identity brought to life.",
-    "video": "/video/opt_IMG_3507.mp4",
-    "poster": "/video/thumb_opt_IMG_3507.jpg",
+    "video": "/video/opt_IMG_3024.mp4",
+    "poster": "/video/thumb_opt_IMG_3024.jpg",
     "tags": [
       "Direction",
       "3D Animation",
@@ -88,8 +88,8 @@ export const projects: Project[] = [
     "subtitle": "Performance Ad",
     "category": "Marketing",
     "description": "Performance-driven ad campaign bathed in warm tones, optimized for scroll-stopping impact across platforms.",
-    "video": "/video/opt_IMG_3956.mp4",
-    "poster": "/video/thumb_opt_IMG_3956.jpg",
+    "video": "/video/opt_IMG_3441.mp4",
+    "poster": "/video/thumb_opt_IMG_3441.jpg",
     "tags": [
       "Ad Creative",
       "A/B Testing",
@@ -102,11 +102,165 @@ export const projects: Project[] = [
     "subtitle": "Art Direction",
     "category": "Editing",
     "description": "Contemplative art piece exploring stillness within motion — every frame composed with editorial precision.",
-    "video": "/video/opt_IMG_3966.mp4",
-    "poster": "/video/thumb_opt_IMG_3966.jpg",
+    "video": "/video/opt_IMG_3507.mp4",
+    "poster": "/video/thumb_opt_IMG_3507.jpg",
     "tags": [
       "Art Direction",
       "Post-Production",
+      "Grading"
+    ]
+  },
+  {
+    "id": 8,
+    "title": "Aether Drift",
+    "subtitle": "Ambient Synthesis",
+    "category": "Motion",
+    "description": "A continuous flow of abstract particle dynamics and ambient lighting, crafted for high-end luxury digital displays.",
+    "video": "/video/opt_IMG_3956.mp4",
+    "poster": "/video/thumb_opt_IMG_3956.jpg",
+    "tags": [
+      "Particles",
+      "Houdini",
+      "Atmospheric"
+    ]
+  },
+  {
+    "id": 9,
+    "title": "Luminous Shift",
+    "subtitle": "Editorial Lookbook",
+    "category": "Marketing",
+    "description": "A visually striking lookbook campaign featuring high contrast aesthetics and bold color blocking for digital channels.",
+    "video": "/video/opt_IMG_3966.mp4",
+    "poster": "/video/thumb_opt_IMG_3966.jpg",
+    "tags": [
+      "Lookbook",
+      "Direct Response",
+      "Social Ad"
+    ]
+  },
+  {
+    "id": 10,
+    "title": "Prism View",
+    "subtitle": "Optical Refractions",
+    "category": "Editing",
+    "description": "A detailed exploration of light refractions, crystal optics, and chromatic aberration through dynamic macro shots.",
+    "video": "/video/opt_IMG_8112.mp4",
+    "poster": "/video/thumb_opt_IMG_8112.jpg",
+    "tags": [
+      "Macro",
+      "VFX",
+      "Color Work"
+    ]
+  },
+  {
+    "id": 11,
+    "title": "Royal Caribbean",
+    "subtitle": "Premium Editorial Cut",
+    "category": "Editing",
+    "description": "A premium-grade editorial sequence focused on pacing, tension, and controlled highlights — built for a cinematic finish.",
+    "video": "/video/opt_IMG_8858.mp4",
+    "poster": "/video/thumb_opt_IMG_8858.jpg",
+    "tags": [
+      "Premium Cut",
+      "Color Work",
+      "Cinematic"
+    ]
+  },
+  {
+    "id": 12,
+    "title": "Noir Kinetics",
+    "subtitle": "Motion Signature",
+    "category": "Motion",
+    "description": "A bold motion study with refined timing, micro-transitions, and a luxury finish — designed to feel effortless and expensive.",
+    "video": "/video/opt_IMG_9540.mp4",
+    "poster": "/video/thumb_opt_IMG_9540.jpg",
+    "tags": [
+      "After Effects",
+      "Micro-Transitions",
+      "Typography"
+    ]
+  },
+  {
+    "id": 13,
+    "title": "Aurum Campaign",
+    "subtitle": "Performance Showcase",
+    "category": "Marketing",
+    "description": "High-intent creative engineered for scroll-stopping performance — sharp hooks, clean composition, and brand-first rhythm.",
+    "video": "/video/opt_IMG_9661.mp4",
+    "poster": "/video/thumb_opt_IMG_9661.jpg",
+    "tags": [
+      "Ad Creative",
+      "Hook Design",
+      "Conversion"
+    ]
+  },
+  {
+    "id": 14,
+    "title": "Velvet Horizon",
+    "subtitle": "Luxury Brand Film",
+    "category": "Motion",
+    "description": "A sweeping brand film with velvet tones, deliberate pacing, and editorial framing built for premium digital presence.",
+    "video": "/video/opt_new1.mp4",
+    "poster": "/video/thumb_opt_new1.jpg",
+    "tags": [
+      "Brand Film",
+      "Direction",
+      "Luxury"
+    ]
+  },
+  {
+    "id": 15,
+    "title": "Chromatic Drift",
+    "subtitle": "Visual Experience",
+    "category": "Editing",
+    "description": "An immersive chromatic journey through light, texture, and rhythm — refined in post for a high-end cinematic finish.",
+    "video": "/video/opt_new2.mp4",
+    "poster": "/video/thumb_opt_new2.jpg",
+    "tags": [
+      "Color Work",
+      "Editorial",
+      "Cinematic"
+    ]
+  },
+  {
+    "id": 16,
+    "title": "Solstice Bloom",
+    "subtitle": "Fashion Editorial",
+    "category": "Marketing",
+    "description": "An evocative fashion editorial merging organic silhouettes with warm, natural daylight and rhythmic pacing.",
+    "video": "/video/opt_new3.mp4",
+    "poster": "/video/thumb_opt_new3.jpg",
+    "tags": [
+      "High Fashion",
+      "Pacing",
+      "Grading"
+    ]
+  },
+  {
+    "id": 17,
+    "title": "Apex Kinetic",
+    "subtitle": "Commercial Spot",
+    "category": "Motion",
+    "description": "A high-octane commercial spot capturing raw velocity and precision engineering through dynamic sound design.",
+    "video": "/video/opt_new4.mp4",
+    "poster": "/video/thumb_opt_new4.jpg",
+    "tags": [
+      "Sound Design",
+      "CGI",
+      "Visual Hook"
+    ]
+  },
+  {
+    "id": 18,
+    "title": "Opal Atmosphere",
+    "subtitle": "Documentary Short",
+    "category": "Editing",
+    "description": "A poetic documentary portrait exploring human connection against vast landscapes with organic color science.",
+    "video": "/video/opt_new5.mp4",
+    "poster": "/video/thumb_opt_new5.jpg",
+    "tags": [
+      "Storytelling",
+      "Atmosphere",
       "Grading"
     ]
   }

@@ -74,6 +74,62 @@ const templates = [
     category: "Editing",
     description: "A detailed exploration of light refractions, crystal optics, and chromatic aberration through dynamic macro shots.",
     tags: ["Macro", "VFX", "Color Work"]
+  },
+  {
+    title: "Royal Caribbean",
+    subtitle: "Premium Editorial Cut",
+    category: "Editing",
+    description: "A premium-grade editorial sequence focused on pacing, tension, and controlled highlights — built for a cinematic finish.",
+    tags: ["Premium Cut", "Color Work", "Cinematic"]
+  },
+  {
+    title: "Noir Kinetics",
+    subtitle: "Motion Signature",
+    category: "Motion",
+    description: "A bold motion study with refined timing, micro-transitions, and a luxury finish — designed to feel effortless and expensive.",
+    tags: ["After Effects", "Micro-Transitions", "Typography"]
+  },
+  {
+    title: "Aurum Campaign",
+    subtitle: "Performance Showcase",
+    category: "Marketing",
+    description: "High-intent creative engineered for scroll-stopping performance — sharp hooks, clean composition, and brand-first rhythm.",
+    tags: ["Ad Creative", "Hook Design", "Conversion"]
+  },
+  {
+    title: "Velvet Horizon",
+    subtitle: "Luxury Brand Film",
+    category: "Motion",
+    description: "A sweeping brand film with velvet tones, deliberate pacing, and editorial framing built for premium digital presence.",
+    tags: ["Brand Film", "Direction", "Luxury"]
+  },
+  {
+    title: "Chromatic Drift",
+    subtitle: "Visual Experience",
+    category: "Editing",
+    description: "An immersive chromatic journey through light, texture, and rhythm — refined in post for a high-end cinematic finish.",
+    tags: ["Color Work", "Editorial", "Cinematic"]
+  },
+  {
+    title: "Solstice Bloom",
+    subtitle: "Fashion Editorial",
+    category: "Marketing",
+    description: "An evocative fashion editorial merging organic silhouettes with warm, natural daylight and rhythmic pacing.",
+    tags: ["High Fashion", "Pacing", "Grading"]
+  },
+  {
+    title: "Apex Kinetic",
+    subtitle: "Commercial Spot",
+    category: "Motion",
+    description: "A high-octane commercial spot capturing raw velocity and precision engineering through dynamic sound design.",
+    tags: ["Sound Design", "CGI", "Visual Hook"]
+  },
+  {
+    title: "Opal Atmosphere",
+    subtitle: "Documentary Short",
+    category: "Editing",
+    description: "A poetic documentary portrait exploring human connection against vast landscapes with organic color science.",
+    tags: ["Storytelling", "Atmosphere", "Grading"]
   }
 ];
 

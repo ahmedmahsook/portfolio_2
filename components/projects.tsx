@@ -130,6 +130,38 @@ const allTemplates = [
       "A visually striking lookbook campaign featuring high contrast aesthetics and bold color blocking for digital channels.",
     tags: ["Lookbook", "Direct Response", "Social Ad"],
   },
+  {
+    title: "Prism View",
+    subtitle: "Optical Refractions",
+    category: "Editing" as const,
+    description:
+      "A detailed exploration of light refractions, crystal optics, and chromatic aberration through dynamic macro shots.",
+    tags: ["Macro", "VFX", "Color Work"],
+  },
+  {
+    title: "Solstice Bloom",
+    subtitle: "Fashion Editorial",
+    category: "Marketing" as const,
+    description:
+      "An evocative fashion editorial merging organic silhouettes with warm, natural daylight and rhythmic pacing.",
+    tags: ["High Fashion", "Pacing", "Grading"],
+  },
+  {
+    title: "Apex Kinetic",
+    subtitle: "Commercial Spot",
+    category: "Motion" as const,
+    description:
+      "A high-octane commercial spot capturing raw velocity and precision engineering through dynamic sound design.",
+    tags: ["Sound Design", "CGI", "Visual Hook"],
+  },
+  {
+    title: "Opal Atmosphere",
+    subtitle: "Documentary Short",
+    category: "Editing" as const,
+    description:
+      "A poetic documentary portrait exploring human connection against vast landscapes with organic color science.",
+    tags: ["Storytelling", "Atmosphere", "Grading"],
+  },
 ]
 
 /* ═══════════════════════════════════════════════════════
@@ -143,14 +175,22 @@ function toVideoBaseName(pathOrId: string) {
 
 function posterForVideoPath(videoPath: string) {
   const base = toVideoBaseName(videoPath)
-  // High quality Cloudinary poster thumbnail with auto-format and optimization
-  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/f_auto,q_auto/portfolio/${base}_poster.jpg`
+  if (videoPath.startsWith("portfolio/")) {
+    // High quality Cloudinary poster thumbnail with auto-format and optimization
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/f_auto,q_auto/portfolio/${base}_poster.jpg`
+  }
+  // Local poster fallback
+  return `/video/thumb_opt_${base}.jpg`
 }
 
 function playbackSrc(videoPath: string) {
   const base = toVideoBaseName(videoPath)
-  // Fast web playback with auto-format (f_auto) and perceptual quality compression (q_auto)
-  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto/portfolio/${base}.mp4`
+  if (videoPath.startsWith("portfolio/")) {
+    // Fast web playback with auto-format (f_auto) and perceptual quality compression (q_auto)
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto/portfolio/${base}.mp4`
+  }
+  // Local video playback
+  return `/video/opt_${base}.mp4`
 }
 
 function buildProjectsFromVideos(videoPaths: string[]): PremiumProject[] {

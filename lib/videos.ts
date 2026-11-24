@@ -7,12 +7,9 @@ export interface CloudinaryVideoConfig {
   titleOverride?: string
 }
 
-// Exactly 15 projects in their required sequence:
-// First three new videos:
-// 1. project-01
-// 2. project-02
-// 3. project-03
-// Followed by all 12 original video projects in their original sequence.
+// Unified list of portfolio videos:
+// 1-15: Cloudinary hosted projects (portfolio/...)
+// 16-21: Newly added local projects (/video/...)
 export const videos: string[] = [
   "portfolio/project-01",
   "portfolio/project-02",
@@ -29,4 +26,10 @@ export const videos: string[] = [
   "portfolio/new3",
   "portfolio/new4",
   "portfolio/new5",
+  "/video/IMG_2340.mov",
+  "/video/IMG_3441.mp4",
+  "/video/IMG_8112.mov",
+  "/video/IMG_8858.mp4",
+  "/video/IMG_9540.mov",
+  "/video/IMG_9661.mp4",
 ]
