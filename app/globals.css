@@ -515,10 +515,10 @@ body::after {
 /* Clean typography */
 .hero-minimal-name {
   font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-size: clamp(2rem, 5vw, 3.75rem);
+  font-size: clamp(1.85rem, 3.4vw, 3.25rem);
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
   color: var(--earth-deep);
 }
 

@@ -176,17 +176,27 @@ function toVideoBaseName(pathOrId: string) {
 function posterForVideoPath(videoPath: string) {
   const base = toVideoBaseName(videoPath)
   if (videoPath.startsWith("portfolio/")) {
-    // High quality Cloudinary poster thumbnail with auto-format and optimization
-    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/f_auto,q_auto/portfolio/${base}_poster.jpg`
+    // High performance Cloudinary poster: auto format, auto compression, capped dimensions
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_800,c_limit/portfolio/${base}.jpg`
   }
   // Local poster fallback
   return `/video/thumb_opt_${base}.jpg`
 }
 
+function previewVideoSrc(videoPath: string) {
+  const base = toVideoBaseName(videoPath)
+  if (videoPath.startsWith("portfolio/")) {
+    // Highly optimized lightweight video preview: 720p width, eco quality, stripped audio for fast preview
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_720,c_limit,an_none/portfolio/${base}.mp4`
+  }
+  // Local video playback
+  return `/video/opt_${base}.mp4`
+}
+
 function playbackSrc(videoPath: string) {
   const base = toVideoBaseName(videoPath)
   if (videoPath.startsWith("portfolio/")) {
-    // Fast web playback with auto-format (f_auto) and perceptual quality compression (q_auto)
+    // Full quality for modal presentation
     return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto/portfolio/${base}.mp4`
   }
   // Local video playback
@@ -241,68 +251,113 @@ function buildProjectsFromVideos(videoPaths: string[]): PremiumProject[] {
    PROJECT CARD
    ═══════════════════════════════════════════════════════ */
 
+// Global active preview count tracker to cap concurrent decoding on mobile/desktop
+let activePreviewCount = 0
+const MAX_CONCURRENT_PREVIEWS = 3
+
 function ProjectCard({
   project,
   index,
   onSelect,
+  isModalOpen,
 }: {
   project: PremiumProject
   index: number
   onSelect: () => void
+  isModalOpen?: boolean
 }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isVideoReady, setIsVideoReady] = useState(false)
-  const preferredSrc = playbackSrc(project.video)
-  const [videoSrc, setVideoSrc] = useState(preferredSrc)
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false)
+  const previewSrc = previewVideoSrc(project.video)
+  const [videoSrc, setVideoSrc] = useState("")
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  // Only detect visibility within viewport to conserve decoding threads
+  const isVisible = useInView(cardRef, { margin: "0px 0px 50px 0px" })
+
+  // Performance Optimization: Load video source ONLY when hovered on desktop or visible in top viewport
+  useEffect(() => {
+    if ((isHovered || isVisible) && !shouldLoadVideo && !isModalOpen) {
+      setShouldLoadVideo(true)
+      setVideoSrc(previewSrc)
+    }
+  }, [isHovered, isVisible, shouldLoadVideo, isModalOpen, previewSrc])
+
+  // Pause preview playback when card leaves viewport, modal opens, or concurrent limit reached
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el || !shouldLoadVideo) return
+
+    let isPlayingLocally = false
+
+    if (isVisible && !isModalOpen) {
+      if (activePreviewCount < MAX_CONCURRENT_PREVIEWS || isHovered) {
+        activePreviewCount += 1
+        isPlayingLocally = true
+        el.play().catch(() => {
+          // Autoplay policy handling
+        })
+      }
+    } else {
+      el.pause()
+    }
+
+    return () => {
+      if (isPlayingLocally) {
+        activePreviewCount = Math.max(0, activePreviewCount - 1)
+      }
+    }
+  }, [isVisible, isModalOpen, isHovered, shouldLoadVideo])
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 24, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.5, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+      ref={cardRef}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.45, delay: Math.min((index % 6) * 0.04, 0.25), ease: [0.22, 1, 0.36, 1] }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => {
-        console.log(`[ProjectCard] Clicked project: "${project.title}" (id=${project.id})`)
-        console.log(`[ProjectCard] Video path: ${project.video}`)
-        onSelect()
-      }}
+      onClick={onSelect}
       data-cursor="project"
-      className="group cursor-pointer"
+      className="group cursor-pointer will-change-transform"
     >
       <div className="project-card relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#2d1b11]">
-        {/* Video layer (autoplays immediately) */}
-        <video
-          src={videoSrc}
-          poster={project.poster}
-          muted
-          loop
-          playsInline
-          autoPlay
-          preload="metadata"
-          onError={() => {
-            if (videoSrc !== project.video) setVideoSrc(project.video)
-          }}
-          onLoadedData={() => setIsVideoReady(true)}
-          onCanPlay={() => setIsVideoReady(true)}
-          className={`absolute inset-0 w-full h-full object-cover z-[1] transition-opacity duration-700 ${
-            isVideoReady ? "opacity-100" : "opacity-0"
-          }`}
-        />
+        {/* Video layer: Only rendered/loaded when in view or hovered to save decoding bandwidth */}
+        {shouldLoadVideo && (
+          <video
+            ref={videoRef}
+            src={videoSrc}
+            poster={project.poster}
+            muted
+            loop
+            playsInline
+            autoPlay={isVisible && !isModalOpen}
+            preload="none"
+            onError={() => {
+              if (videoSrc !== project.video) setVideoSrc(project.video)
+            }}
+            onLoadedData={() => setIsVideoReady(true)}
+            onCanPlay={() => setIsVideoReady(true)}
+            className={`absolute inset-0 w-full h-full object-cover z-[1] transition-opacity duration-500 ${
+              isVideoReady ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        )}
 
-        {/* Poster Image layer (crossfades out once video is ready) */}
+        {/* Poster Image layer (shows sharp instant preview without downloading video) */}
         <img
           src={project.poster}
           alt={project.title}
           onError={(e) => {
             ;(e.currentTarget as HTMLImageElement).src = "/placeholder.jpg"
           }}
-          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out ${
+          className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out ${
             isHovered ? "scale-105" : "scale-100"
-          } transition-opacity duration-700 ${isVideoReady ? "opacity-0" : "opacity-100"} z-[2]`}
+          } transition-opacity duration-500 ${isVideoReady ? "opacity-0" : "opacity-100"} z-[2]`}
           loading="lazy"
+          decoding="async"
         />
 
         {/* Cinematic gradient overlay */}
@@ -526,13 +581,75 @@ function ProjectModal({
 
 export function Projects() {
   const [selectedProject, setSelectedProject] = useState<PremiumProject | null>(null)
-  const [allProjects] = useState<PremiumProject[]>(() => {
-    const dynamicProjects = buildProjectsFromVideos(videos)
-    console.log(`[projects] Built ${dynamicProjects.length} dynamic projects from static config`)
-    return dynamicProjects
-  })
+  const [allProjects, setAllProjects] = useState<PremiumProject[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
+
+  // Dynamically synchronize verified published projects from Supabase
+  useEffect(() => {
+    let isMounted = true
+    setIsLoading(true)
+    setHasError(false)
+
+    fetch("/api/videos/published")
+      .then((res) => {
+        if (!res.ok) throw new Error("Published videos endpoint unavailable")
+        return res.json()
+      })
+      .then((data) => {
+        if (!isMounted) return
+
+        if (!data.success || !Array.isArray(data.videos)) {
+          throw new Error("Invalid response from video service")
+        }
+
+        // Map verified dynamic database records to PremiumProject format
+        const dynamicProjects: PremiumProject[] = data.videos.map((v: any, idx: number) => {
+          let videoRef = v.cloudinary_public_id
+          if (v.source_type === "local") {
+            const clean = v.cloudinary_public_id.replace(/^local\//, "")
+            videoRef = `/video/opt_${clean}.mp4`
+          }
+
+          return {
+            id: idx + 1,
+            title: v.title,
+            subtitle: v.subtitle || "",
+            category: v.category,
+            description: v.description || "",
+            video: videoRef,
+            poster: v.poster_url || posterForVideoPath(videoRef),
+            tags: Array.isArray(v.tags) ? v.tags : [],
+            featured: true,
+            featuredRank: idx + 1,
+          }
+        })
+
+        setAllProjects(dynamicProjects)
+        setIsLoading(false)
+      })
+      .catch((err) => {
+        if (!isMounted) return
+        console.warn("[projects] Error retrieving published records:", err.message)
+
+        // ISOLATION: In local development exclusively, allow fallback to baseline so developer can work offline.
+        // In production, NEVER expose static fallback to prevent leaking unpublished drafts.
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[projects] Local dev fallback enabled for offline development.")
+          const devProjects = buildProjectsFromVideos(videos)
+          setAllProjects(devProjects)
+        } else {
+          setHasError(true)
+        }
+        setIsLoading(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   return (
     <section id="projects" className="section-editorial py-24 sm:py-32 relative overflow-hidden">
@@ -558,19 +675,35 @@ export function Projects() {
           </h2>
         </motion.div>
 
-        {/* Project grid — NO artificial limits, renders ALL projects */}
-        <motion.div layout className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-          <AnimatePresence mode="popLayout">
-            {allProjects.map((project, index) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                index={index}
-                onSelect={() => setSelectedProject(project)}
-              />
-            ))}
-          </AnimatePresence>
-        </motion.div>
+        {/* Project grid — dynamically responsive, renders all published projects */}
+        {isLoading ? (
+          <div className="py-20 flex flex-col items-center justify-center text-center">
+            <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-[#d97706] animate-spin mb-3" />
+            <p className="text-white/40 text-xs tracking-widest uppercase">Loading Featured Works...</p>
+          </div>
+        ) : hasError ? (
+          <div className="py-20 text-center">
+            <p className="text-white/50 text-xs tracking-widest uppercase">Works momentarily unavailable</p>
+          </div>
+        ) : allProjects.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="text-white/40 text-xs tracking-widest uppercase">New projects coming soon</p>
+          </div>
+        ) : (
+          <motion.div layout className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+            <AnimatePresence mode="popLayout">
+              {allProjects.map((project, index) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  index={index}
+                  isModalOpen={Boolean(selectedProject)}
+                  onSelect={() => setSelectedProject(project)}
+                />
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        )}
       </div>
 
       {/* Modal */}

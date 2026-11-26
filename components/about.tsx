@@ -6,7 +6,7 @@ import { useRef } from "react"
 import { SectionGlow } from "@/components/editorial-atmosphere"
 import { siteDivider, siteShell } from "@/lib/site-layout"
 
-const ABOUT_IMAGE = "/about.jpeg"
+const ABOUT_IMAGE = "/about-bw.jpg"
 
 export function About() {
   const ref = useRef(null)
@@ -40,10 +40,10 @@ export function About() {
             <div className="relative aspect-[4/5] w-full max-w-none sm:max-w-lg mx-auto lg:mx-0 rounded-2xl overflow-hidden border border-border group card-surface hover-lift">
               <Image
                 src={ABOUT_IMAGE}
-                alt="Moideen Rahil Monaco — Creative Director at work with camera and gimbal"
+                alt="Moideen Rahil Monaco — Mirror portrait with camera"
                 fill
                 sizes="(max-width: 1024px) 90vw, 480px"
-                className="object-cover object-[50%_42%] scale-[1.02] transition-transform duration-700 group-hover:scale-[1.03]"
+                className="object-cover object-[50%_35%] scale-[1.01] transition-transform duration-700 group-hover:scale-[1.03]"
               />
 
               <div

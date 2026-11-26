@@ -1,15 +1,24 @@
 "use client"
 
-import { MouseGlow } from "@/components/effects"
-import { CustomCursor } from "@/components/custom-cursor"
+import dynamic from "next/dynamic"
 import { EditorialAtmosphere } from "@/components/editorial-atmosphere"
 import { Hero } from "@/components/hero"
 import { About } from "@/components/about"
-import { Services } from "@/components/services"
 import { Projects } from "@/components/projects"
-import { Skills } from "@/components/skills"
-import { Testimonials } from "@/components/testimonials"
-import { Contact, Footer } from "@/components/contact"
+
+// Dynamically import desktop-only pointer effects without blocking initial render/hydration
+const MouseGlow = dynamic(() => import("@/components/effects").then((mod) => mod.MouseGlow), {
+  ssr: false,
+})
+const CustomCursor = dynamic(() => import("@/components/custom-cursor").then((mod) => mod.CustomCursor), {
+  ssr: false,
+})
+
+// Dynamically import below-the-fold sections
+const Services = dynamic(() => import("@/components/services").then((mod) => mod.Services))
+const Skills = dynamic(() => import("@/components/skills").then((mod) => mod.Skills))
+const Contact = dynamic(() => import("@/components/contact").then((mod) => mod.Contact))
+const Footer = dynamic(() => import("@/components/contact").then((mod) => mod.Footer))
 
 export default function Home() {
   return (
@@ -22,10 +31,9 @@ export default function Home() {
         <main className="w-full min-w-0">
           <Hero />
           <About />
-           <Projects />
+          <Projects />
           <Services />
           <Skills />
-          {/* <Testimonials /> */}
           <Contact />
         </main>
         <Footer />
