@@ -169,15 +169,19 @@ const allTemplates = [
    ═══════════════════════════════════════════════════════ */
 
 function toVideoBaseName(pathOrId: string) {
-  const clean = pathOrId.replace(/^portfolio\//, "").replace(/^\/?video\//, "")
+  const clean = pathOrId
+    .replace(/^portfolio\//, "")
+    .replace(/^\/?video\//, "")
+    .replace(/^opt_/, "")
+    .replace(/^thumb_opt_/, "")
   return clean.replace(/\.[^/.]+$/, "")
 }
 
 function posterForVideoPath(videoPath: string) {
   const base = toVideoBaseName(videoPath)
   if (videoPath.startsWith("portfolio/")) {
-    // High performance Cloudinary poster: auto format, auto compression, capped dimensions
-    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_800,c_limit/portfolio/${base}.jpg`
+    // High performance Cloudinary poster: auto format, auto compression, capped dimensions, first frame
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_700,c_limit,so_0/portfolio/${base}.jpg`
   }
   // Local poster fallback
   return `/video/thumb_opt_${base}.jpg`
@@ -186,8 +190,8 @@ function posterForVideoPath(videoPath: string) {
 function previewVideoSrc(videoPath: string) {
   const base = toVideoBaseName(videoPath)
   if (videoPath.startsWith("portfolio/")) {
-    // Highly optimized lightweight video preview: 720p width, eco quality, stripped audio for fast preview
-    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_720,c_limit,an_none/portfolio/${base}.mp4`
+    // Highly optimized lightweight video preview: 540p width, eco quality, stripped audio for ultra-fast preview
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_540,c_limit,an_none/portfolio/${base}.mp4`
   }
   // Local video playback
   return `/video/opt_${base}.mp4`
@@ -269,46 +273,51 @@ function ProjectCard({
   const [isHovered, setIsHovered] = useState(false)
   const [isVideoReady, setIsVideoReady] = useState(false)
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false)
+  const [canHover, setCanHover] = useState(false)
   const previewSrc = previewVideoSrc(project.video)
   const [videoSrc, setVideoSrc] = useState("")
   const videoRef = useRef<HTMLVideoElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
-  // Only detect visibility within viewport to conserve decoding threads
-  const isVisible = useInView(cardRef, { margin: "0px 0px 50px 0px" })
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isVisible = useInView(cardRef, { margin: "0px 0px 100px 0px" })
 
-  // Performance Optimization: Load video source ONLY when hovered on desktop or visible in top viewport
+  // Detect pointer capability (desktop mouse vs mobile touch)
   useEffect(() => {
-    if ((isHovered || isVisible) && !shouldLoadVideo && !isModalOpen) {
-      setShouldLoadVideo(true)
-      setVideoSrc(previewSrc)
-    }
-  }, [isHovered, isVisible, shouldLoadVideo, isModalOpen, previewSrc])
+    setCanHover(window.matchMedia("(hover: hover) and (pointer: fine)").matches)
+  }, [])
 
-  // Pause preview playback when card leaves viewport, modal opens, or concurrent limit reached
+  // Desktop Hover preview management with 120ms debounce to prevent spurious requests
   useEffect(() => {
-    const el = videoRef.current
-    if (!el || !shouldLoadVideo) return
+    if (!canHover) return
 
-    let isPlayingLocally = false
-
-    if (isVisible && !isModalOpen) {
-      if (activePreviewCount < MAX_CONCURRENT_PREVIEWS || isHovered) {
-        activePreviewCount += 1
-        isPlayingLocally = true
-        el.play().catch(() => {
-          // Autoplay policy handling
-        })
-      }
+    if (isHovered && isVisible && !isModalOpen) {
+      hoverTimerRef.current = setTimeout(() => {
+        setVideoSrc(previewSrc)
+        setShouldLoadVideo(true)
+      }, 120)
     } else {
-      el.pause()
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+      setShouldLoadVideo(false)
+      setIsVideoReady(false)
     }
 
     return () => {
-      if (isPlayingLocally) {
-        activePreviewCount = Math.max(0, activePreviewCount - 1)
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
+    }
+  }, [isHovered, isVisible, isModalOpen, canHover, previewSrc])
+
+  // Explicitly unload video decoder and cancel buffer when card leaves viewport or modal opens
+  useEffect(() => {
+    if (!isVisible || isModalOpen) {
+      setShouldLoadVideo(false)
+      setIsVideoReady(false)
+      if (videoRef.current) {
+        videoRef.current.pause()
+        videoRef.current.removeAttribute("src")
+        videoRef.current.load()
       }
     }
-  }, [isVisible, isModalOpen, isHovered, shouldLoadVideo])
+  }, [isVisible, isModalOpen])
 
   return (
     <motion.div
@@ -317,14 +326,18 @@ function ProjectCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.45, delay: Math.min((index % 6) * 0.04, 0.25), ease: [0.22, 1, 0.36, 1] }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => {
+        if (canHover) setIsHovered(true)
+      }}
+      onMouseLeave={() => {
+        if (canHover) setIsHovered(false)
+      }}
       onClick={onSelect}
       data-cursor="project"
       className="group cursor-pointer will-change-transform"
     >
       <div className="project-card relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#2d1b11]">
-        {/* Video layer: Only rendered/loaded when in view or hovered to save decoding bandwidth */}
+        {/* Video layer: Only mounted on desktop hover when in view and modal is closed */}
         {shouldLoadVideo && (
           <video
             ref={videoRef}
@@ -333,7 +346,7 @@ function ProjectCard({
             muted
             loop
             playsInline
-            autoPlay={isVisible && !isModalOpen}
+            autoPlay
             preload="none"
             onError={() => {
               if (videoSrc !== project.video) setVideoSrc(project.video)
@@ -346,7 +359,7 @@ function ProjectCard({
           />
         )}
 
-        {/* Poster Image layer (shows sharp instant preview without downloading video) */}
+        {/* Poster Image layer: Instant sharp preview with responsive loading and zero layout shifts */}
         <img
           src={project.poster}
           alt={project.title}
@@ -356,7 +369,7 @@ function ProjectCard({
           className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out ${
             isHovered ? "scale-105" : "scale-100"
           } transition-opacity duration-500 ${isVideoReady ? "opacity-0" : "opacity-100"} z-[2]`}
-          loading="lazy"
+          loading={index < 3 ? "eager" : "lazy"}
           decoding="async"
         />
 
@@ -581,17 +594,16 @@ function ProjectModal({
 
 export function Projects() {
   const [selectedProject, setSelectedProject] = useState<PremiumProject | null>(null)
-  const [allProjects, setAllProjects] = useState<PremiumProject[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Pre-seed state with curated portfolio projects for instantaneous 0ms frame-1 visual rendering
+  const [allProjects, setAllProjects] = useState<PremiumProject[]>(() => buildProjectsFromVideos(videos))
+  const [isLoading, setIsLoading] = useState(false)
   const [hasError, setHasError] = useState(false)
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
-  // Dynamically synchronize verified published projects from Supabase
+  // Dynamically synchronize verified published projects from Supabase in the background
   useEffect(() => {
     let isMounted = true
-    setIsLoading(true)
-    setHasError(false)
 
     fetch("/api/videos/published")
       .then((res) => {
@@ -609,7 +621,7 @@ export function Projects() {
         const dynamicProjects: PremiumProject[] = data.videos.map((v: any, idx: number) => {
           let videoRef = v.cloudinary_public_id
           if (v.source_type === "local") {
-            const clean = v.cloudinary_public_id.replace(/^local\//, "")
+            const clean = toVideoBaseName(v.cloudinary_public_id)
             videoRef = `/video/opt_${clean}.mp4`
           }
 
@@ -628,18 +640,11 @@ export function Projects() {
         })
 
         setAllProjects(dynamicProjects)
-        setIsLoading(false)
       })
       .catch((err) => {
         if (!isMounted) return
         console.warn("[projects] Error retrieving published records:", err.message)
-
-        // Resilient Fallback: If database is unreachable or credentials are not yet configured on Vercel,
-        // seamlessly fall back to verified curated baseline projects so the visitor never sees a broken gallery.
-        console.warn("[projects] Falling back to curated portfolio projects.")
-        const baselineProjects = buildProjectsFromVideos(videos)
-        setAllProjects(baselineProjects)
-        setIsLoading(false)
+        // Keeps the baseline curated portfolio projects without showing error or flashing
       })
 
     return () => {
