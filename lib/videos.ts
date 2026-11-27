@@ -1,6 +1,8 @@
 // Cloud Name for public media delivery (safe to be public for client-side rendering)
 export const CLOUDINARY_CLOUD_NAME =
-  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "driapshxj"
+  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+  process.env.CLOUDINARY_CLOUD_NAME ||
+  "driapshxj"
 
 export interface CloudinaryVideoConfig {
   base: string

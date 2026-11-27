@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/auth'
-import { getSupabaseAdmin, VideoCategory } from '@/lib/supabase'
+import { getSupabaseAdmin, cleanEnv, VideoCategory } from '@/lib/supabase'
 import { v2 as cloudinary } from 'cloudinary'
 
 export async function POST(request: NextRequest) {
@@ -88,9 +88,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Server-side verification with Cloudinary (if secrets are configured)
-    const apiKey = process.env.CLOUDINARY_API_KEY
-    const apiSecret = process.env.CLOUDINARY_API_SECRET
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'driapshxj'
+    const apiKey = cleanEnv(process.env.CLOUDINARY_API_KEY)
+    const apiSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET)
+    const cloudName =
+      cleanEnv(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+      cleanEnv(process.env.CLOUDINARY_CLOUD_NAME) ||
+      'driapshxj'
 
     if (apiKey && apiSecret && !cloudinary_public_id.startsWith('local/')) {
       cloudinary.config({
@@ -120,8 +123,13 @@ export async function POST(request: NextRequest) {
     const cleanBase = cloudinary_public_id.replace(/^portfolio\//, '')
     const finalVideoUrl =
       video_url || `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto/portfolio/${cleanBase}.mp4`
+    
+    // Cloudinary video thumbnail requires /video/upload/ and .jpg extension
+    const defaultPosterUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto:eco,w_800,so_1/portfolio/${cleanBase}.jpg`
     const finalPosterUrl =
-      poster_url || `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/portfolio/${cleanBase}_poster.jpg`
+      poster_url && !poster_url.includes('/image/upload/') && !poster_url.includes('_poster.jpg')
+        ? poster_url
+        : defaultPosterUrl
 
     // 5. Database registration in Supabase
     try {

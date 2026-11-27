@@ -130,7 +130,10 @@ export async function checkLoginRateLimit(ip: string): Promise<{ allowed: boolea
   } catch (err: any) {
     if (isProduction) {
       console.error('[RATE_LIMIT_CHECK_PROD_FAIL]', err?.message || err)
-      throw new Error('RATE_LIMIT_BACKEND_UNAVAILABLE')
+      const errorMsg = err?.message?.startsWith('Supabase credentials missing')
+        ? err.message
+        : 'RATE_LIMIT_BACKEND_UNAVAILABLE'
+      throw new Error(errorMsg)
     }
     // In local development, fall back to local in-memory map
   }
@@ -179,14 +182,15 @@ function getSecretKey(): string {
     // If neither is configured, fallback to a persistent internal default for development
     return 'portfolio_default_session_secret_change_in_production'
   }
-  return secret
+  return secret.trim()
 }
 
 // ------------------------------------------------------------------------------
 // Timing-safe password verification
 // ------------------------------------------------------------------------------
 export function verifyPassword(inputPassword: string): boolean {
-  const configuredPassword = process.env.UPLOAD_PORTAL_PASSWORD
+  const rawPassword = process.env.UPLOAD_PORTAL_PASSWORD || process.env.ADMIN_PASSWORD
+  const configuredPassword = rawPassword?.trim()
 
   if (!configuredPassword) {
     console.warn('[AUTH] UPLOAD_PORTAL_PASSWORD is not set in environment variables.')

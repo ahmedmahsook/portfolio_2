@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { v2 as cloudinary } from 'cloudinary'
 import { verifyAdminSession } from '@/lib/auth'
+import { cleanEnv } from '@/lib/supabase'
 
 export async function POST(request: NextRequest) {
   // 1. Enforce server-side authentication
@@ -10,9 +11,12 @@ export async function POST(request: NextRequest) {
   }
 
   // 2. Validate environment credentials
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'driapshxj'
-  const apiKey = process.env.CLOUDINARY_API_KEY
-  const apiSecret = process.env.CLOUDINARY_API_SECRET
+  const cloudName =
+    cleanEnv(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+    cleanEnv(process.env.CLOUDINARY_CLOUD_NAME) ||
+    'driapshxj'
+  const apiKey = cleanEnv(process.env.CLOUDINARY_API_KEY)
+  const apiSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET)
 
   if (!apiKey || !apiSecret) {
     return NextResponse.json(

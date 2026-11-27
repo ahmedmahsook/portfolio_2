@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/auth'
-import { getSupabaseAdmin, VideoCategory } from '@/lib/supabase'
+import { getSupabaseAdmin, cleanEnv, VideoCategory } from '@/lib/supabase'
 import { v2 as cloudinary } from 'cloudinary'
 
 interface RouteContext {
@@ -192,13 +192,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // 4. Delete remote asset from Cloudinary via Admin API
-    const apiKey = process.env.CLOUDINARY_API_KEY
-    const apiSecret = process.env.CLOUDINARY_API_SECRET
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'driapshxj'
+    const apiKey = cleanEnv(process.env.CLOUDINARY_API_KEY)
+    const apiSecret = cleanEnv(process.env.CLOUDINARY_API_SECRET)
+    const cloudName =
+      cleanEnv(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+      cleanEnv(process.env.CLOUDINARY_CLOUD_NAME) ||
+      'driapshxj'
 
     if (!apiKey || !apiSecret) {
+      console.error('[DELETE_CONFIG_ERROR] Cloudinary API key or secret missing in server environment.')
       return NextResponse.json(
-        { error: 'Server configuration error: Cloudinary credentials missing.' },
+        { error: 'Media service configuration error. Please contact the administrator.' },
         { status: 500 }
       )
     }
@@ -218,16 +222,16 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
       // Cloudinary returns { result: 'ok' } or { result: 'not found' }
       if (destroyResult.result !== 'ok' && destroyResult.result !== 'not found') {
-        console.error('[CLOUDINARY_DESTROY_FAILED]', destroyResult)
+        console.error('[CLOUDINARY_DESTROY_FAILED] Cloudinary deletion response:', destroyResult)
         return NextResponse.json(
-          { error: `Cloudinary asset deletion failed: ${destroyResult.result || 'Unknown error'}` },
+          { error: 'Unable to remove media asset from storage. Please try again.' },
           { status: 502 }
         )
       }
     } catch (cloudErr: any) {
-      console.error('[CLOUDINARY_DESTROY_ERROR]', cloudErr)
+      console.error('[CLOUDINARY_DESTROY_ERROR]', cloudErr?.message || cloudErr)
       return NextResponse.json(
-        { error: `Cloudinary error during asset removal: ${cloudErr?.message || cloudErr}` },
+        { error: 'Storage service error during asset removal. Please try again later.' },
         { status: 502 }
       )
     }
@@ -239,9 +243,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .eq('id', id)
 
     if (deleteError) {
-      console.error('[DELETE_DB_ERROR]', deleteError)
+      console.error('[DELETE_DB_ERROR]', deleteError?.message || deleteError)
       return NextResponse.json(
-        { error: 'Cloudinary asset deleted, but removing database record failed.' },
+        { error: 'Asset deleted from storage, but removing database record failed.' },
         { status: 500 }
       )
     }
@@ -251,7 +255,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       message: `Project "${video.title}" permanently deleted from Cloudinary and portfolio.`,
     })
   } catch (err: any) {
-    console.error('[DELETE_VIDEO_EXCEPTION]', err)
-    return NextResponse.json({ error: 'Server error processing deletion.' }, { status: 500 })
+    console.error('[DELETE_VIDEO_EXCEPTION]', err?.message || err)
+    return NextResponse.json(
+      { error: 'Server error processing deletion. Please try again.' },
+      { status: 500 }
+    )
   }
 }

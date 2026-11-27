@@ -29,6 +29,18 @@ export type PortfolioVideoUpdate = Partial<PortfolioVideoInsert>
 let supabaseAdminInstance: SupabaseClient | null = null
 let supabasePublicInstance: SupabaseClient | null = null
 
+export function cleanEnv(val: string | undefined): string | undefined {
+  if (!val) return undefined
+  let cleaned = val.trim()
+  if (
+    (cleaned.startsWith('"') && cleaned.endsWith('"')) ||
+    (cleaned.startsWith("'") && cleaned.endsWith("'"))
+  ) {
+    cleaned = cleaned.slice(1, -1).trim()
+  }
+  return cleaned || undefined
+}
+
 /**
  * Server-only Supabase client utilizing the Service Role Key.
  * NEVER expose this client to the browser.
@@ -37,12 +49,22 @@ let supabasePublicInstance: SupabaseClient | null = null
 export function getSupabaseAdmin(): SupabaseClient {
   if (supabaseAdminInstance) return supabaseAdminInstance
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || cleanEnv(process.env.SUPABASE_URL)
+  const serviceRoleKey =
+    cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
+    cleanEnv(process.env.SUPABASE_SERVICE_KEY) ||
+    cleanEnv(process.env.SUPABASE_SECRET_KEY)
 
   if (!url || !serviceRoleKey) {
+    const missing = [
+      !url && 'NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)',
+      !serviceRoleKey && 'SUPABASE_SERVICE_ROLE_KEY',
+    ]
+      .filter(Boolean)
+      .join(' and ')
+
     throw new Error(
-      'Supabase credentials missing: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be configured in environment variables.'
+      `Supabase credentials missing: ${missing} must be configured in environment variables.`
     )
   }
 
@@ -63,11 +85,12 @@ export function getSupabaseAdmin(): SupabaseClient {
 export function getSupabasePublic(): SupabaseClient | null {
   if (supabasePublicInstance) return supabasePublicInstance
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const url = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL) || cleanEnv(process.env.SUPABASE_URL)
   const publicApiKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY
+    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) ||
+    cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY) ||
+    cleanEnv(process.env.SUPABASE_ANON_KEY) ||
+    cleanEnv(process.env.SUPABASE_PUBLISHABLE_KEY)
 
   if (!url || !publicApiKey) {
     return null

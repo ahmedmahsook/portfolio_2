@@ -364,7 +364,13 @@ function ProjectCard({
           src={project.poster}
           alt={project.title}
           onError={(e) => {
-            ;(e.currentTarget as HTMLImageElement).src = "/placeholder.jpg"
+            const target = e.currentTarget as HTMLImageElement
+            const fallback = posterForVideoPath(project.video)
+            if (target.src !== fallback && !target.src.endsWith(fallback)) {
+              target.src = fallback
+            } else {
+              target.src = "/placeholder.jpg"
+            }
           }}
           className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out ${
             isHovered ? "scale-105" : "scale-100"
@@ -625,6 +631,13 @@ export function Projects() {
             videoRef = `/video/opt_${clean}.mp4`
           }
 
+          // Heal broken or missing poster URLs (e.g. legacy /image/upload/..._poster.jpg)
+          const isPosterBroken =
+            !v.poster_url ||
+            v.poster_url.includes("/image/upload/") ||
+            v.poster_url.includes("_poster.jpg")
+          const posterUrl = isPosterBroken ? posterForVideoPath(videoRef) : v.poster_url
+
           return {
             id: idx + 1,
             title: v.title,
@@ -632,7 +645,7 @@ export function Projects() {
             category: v.category,
             description: v.description || "",
             video: videoRef,
-            poster: v.poster_url || posterForVideoPath(videoRef),
+            poster: posterUrl,
             tags: Array.isArray(v.tags) ? v.tags : [],
             featured: true,
             featuredRank: idx + 1,

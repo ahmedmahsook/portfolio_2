@@ -235,6 +235,13 @@ export default function UploadPage() {
 
       // 2. Register video in database
       setUploadStatusText("Verifying asset and registering in portfolio...")
+      const cleanBase = cloudinaryResult.public_id.replace(/^portfolio\//, "")
+      const cloudName =
+        process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+        process.env.CLOUDINARY_CLOUD_NAME ||
+        "driapshxj"
+      const generatedPosterUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto:eco,w_800,so_1/portfolio/${cleanBase}.jpg`
+
       const registerRes = await fetch("/api/videos/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -248,6 +255,7 @@ export default function UploadPage() {
           duration: cloudinaryResult.duration,
           width: cloudinaryResult.width,
           height: cloudinaryResult.height,
+          poster_url: generatedPosterUrl,
         }),
       })
 

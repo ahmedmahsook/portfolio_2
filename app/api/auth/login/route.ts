@@ -64,6 +64,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Authentication successful.' })
   } catch (err: any) {
+    if (err?.message?.startsWith('Supabase credentials missing')) {
+      return NextResponse.json(
+        { error: `Authentication service unavailable: ${err.message}` },
+        { status: 503 }
+      )
+    }
     if (err?.message === 'RATE_LIMIT_BACKEND_UNAVAILABLE') {
       return NextResponse.json(
         { error: 'Authentication service temporarily unavailable. Please try again shortly.' },
