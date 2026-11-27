@@ -10,16 +10,25 @@ import {
   X,
   Lock,
   LogOut,
-  Play,
-  RotateCcw,
   Sparkles,
   Layers,
   Tag as TagIcon,
   Eye,
   EyeOff,
   ExternalLink,
+  Check,
+  ImageIcon,
+  ArrowLeft,
+  Clock,
+  Sparkle,
 } from "lucide-react"
-import { uploadVideoDirectToCloudinary, UploadProgress } from "@/lib/cloudinary-uploader"
+import {
+  uploadVideoDirectToCloudinary,
+  uploadCustomThumbnailToCloudinary,
+  UploadProgress,
+  CloudinaryUploadResult,
+} from "@/lib/cloudinary-uploader"
+import { generateThumbnailCandidates, ThumbnailCandidate } from "@/lib/thumbnails"
 import { VideoCategory } from "@/lib/supabase"
 
 const CATEGORIES: VideoCategory[] = ["Editing", "Marketing", "Motion"]
@@ -45,7 +54,17 @@ export default function UploadPage() {
   const [tagInput, setTagInput] = useState("")
   const [tags, setTags] = useState<string[]>(["Cinematic", "Color Grading"])
 
-  // Upload progress & lifecycle
+  // Multi-step lifecycle: "form" -> "thumbnail_selection" -> "published"
+  const [currentStep, setCurrentStep] = useState<"form" | "thumbnail_selection">("form")
+  const [uploadedVideoResult, setUploadedVideoResult] = useState<CloudinaryUploadResult | null>(null)
+  const [thumbnailCandidates, setThumbnailCandidates] = useState<ThumbnailCandidate[]>([])
+  const [selectedPosterUrl, setSelectedPosterUrl] = useState<string>("")
+  const [customThumbnailUrl, setCustomThumbnailUrl] = useState<string | null>(null)
+  const [isUploadingCustomThumb, setIsUploadingCustomThumb] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
+  const customThumbInputRef = useRef<HTMLInputElement>(null)
+
+  // Upload progress & feedback
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null)
   const [uploadStatusText, setUploadStatusText] = useState("")
@@ -139,6 +158,7 @@ export default function UploadPage() {
     }
   }
 
+  // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(true)
@@ -182,7 +202,11 @@ export default function UploadPage() {
     setUploadProgress(null)
     setUploadStatusText("")
     setUploadError(null)
-    setPublishedProject(null)
+    setUploadedVideoResult(null)
+    setThumbnailCandidates([])
+    setSelectedPosterUrl("")
+    setCustomThumbnailUrl(null)
+    setCurrentStep("form")
   }
 
   // Cancel Upload
@@ -233,40 +257,27 @@ export default function UploadPage() {
         },
       })
 
-      // 2. Register video in database
-      setUploadStatusText("Verifying asset and registering in portfolio...")
-      const cleanBase = cloudinaryResult.public_id.replace(/^portfolio\//, "")
+      // 2. Generate multiple thumbnail candidates at different timestamps
       const cloudName =
         process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
         process.env.CLOUDINARY_CLOUD_NAME ||
         "driapshxj"
-      const generatedPosterUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto:eco,w_800,so_1/portfolio/${cleanBase}.jpg`
+      const candidates = generateThumbnailCandidates(
+        cloudinaryResult.public_id,
+        cloudinaryResult.duration,
+        cloudName
+      )
 
-      const registerRes = await fetch("/api/videos/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cloudinary_public_id: cloudinaryResult.public_id,
-          title: title.trim(),
-          subtitle: subtitle.trim(),
-          category,
-          description: description.trim(),
-          tags,
-          duration: cloudinaryResult.duration,
-          width: cloudinaryResult.width,
-          height: cloudinaryResult.height,
-          poster_url: generatedPosterUrl,
-        }),
-      })
+      setUploadedVideoResult(cloudinaryResult)
+      setThumbnailCandidates(candidates)
 
-      const registerData = await registerRes.json()
+      // Default to candidates[1] (approx 0.5s-1s) to avoid black fade-in frame at 0.0s
+      const initialPoster = candidates[1]?.url || candidates[0]?.url || ""
+      setSelectedPosterUrl(initialPoster)
 
-      if (!registerRes.ok) {
-        throw new Error(registerData.error || "Failed to register video record in database.")
-      }
-
-      setPublishedProject(registerData.project || { title, category })
-      setUploadStatusText("Published successfully!")
+      // Move to Step 2: Thumbnail Selection
+      setCurrentStep("thumbnail_selection")
+      setUploadStatusText("Video uploaded! Please select your preferred portfolio cover thumbnail.")
     } catch (err: any) {
       if (err.message === "Upload cancelled by user.") {
         setUploadStatusText("Upload was cancelled.")
@@ -277,6 +288,76 @@ export default function UploadPage() {
     } finally {
       setIsUploading(false)
       abortControllerRef.current = null
+    }
+  }
+
+  // Handle Custom Thumbnail Upload
+  const handleCustomThumbnailChange = async (file: File) => {
+    if (!file) return
+    const validImageTypes = ["image/jpeg", "image/png", "image/webp"]
+    if (!validImageTypes.includes(file.type)) {
+      setUploadError("Please select a valid image file (JPG, PNG, or WebP).")
+      return
+    }
+
+    setIsUploadingCustomThumb(true)
+    setUploadError(null)
+
+    try {
+      const res = await uploadCustomThumbnailToCloudinary(file)
+      setCustomThumbnailUrl(res.poster_url)
+      setSelectedPosterUrl(res.poster_url)
+    } catch (err: any) {
+      console.error("[CUSTOM_THUMBNAIL_ERROR]", err)
+      setUploadError(err.message || "Failed to upload custom thumbnail.")
+    } finally {
+      setIsUploadingCustomThumb(false)
+    }
+  }
+
+  // Register Video with Supabase after Thumbnail is Confirmed
+  const handleFinalPublish = async () => {
+    if (!uploadedVideoResult) return
+    setIsRegistering(true)
+    setUploadError(null)
+
+    try {
+      const registerRes = await fetch("/api/videos/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cloudinary_public_id: uploadedVideoResult.public_id,
+          title: title.trim(),
+          subtitle: subtitle.trim(),
+          category,
+          description: description.trim(),
+          tags,
+          duration: uploadedVideoResult.duration,
+          width: uploadedVideoResult.width,
+          height: uploadedVideoResult.height,
+          poster_url: selectedPosterUrl,
+        }),
+      })
+
+      const registerData = await registerRes.json()
+
+      if (!registerRes.ok) {
+        throw new Error(registerData.error || "Failed to register video record in database.")
+      }
+
+      setPublishedProject(
+        registerData.project || {
+          title,
+          category,
+          poster_url: selectedPosterUrl,
+        }
+      )
+      resetUploadForm()
+    } catch (err: any) {
+      console.error("[REGISTER_ERROR]", err)
+      setUploadError(err.message || "Failed to publish video to portfolio.")
+    } finally {
+      setIsRegistering(false)
     }
   }
 
@@ -331,9 +412,7 @@ export default function UploadPage() {
             )}
 
             <div>
-              <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                Owner Passcode
-              </label>
+              <label className="block text-xs font-medium text-white/70 mb-2">Passcode</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -383,7 +462,7 @@ export default function UploadPage() {
       {/* Ambient background blur */}
       <div className="fixed top-0 right-1/4 w-[600px] h-[600px] bg-[#d97706]/8 rounded-full blur-[160px] pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-5xl mx-auto relative z-10">
         {/* Navigation Header */}
         <header className="flex items-center justify-between pb-8 mb-8 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -446,7 +525,7 @@ export default function UploadPage() {
                     &quot;{publishedProject.title}&quot; Successfully Published!
                   </h3>
                   <p className="text-xs text-emerald-300/60 mt-0.5">
-                    Your video is live, rendered in the portfolio gallery with automated poster and playback streams.
+                    Your video is live in the portfolio gallery with your selected high-performance poster thumbnail.
                   </p>
                 </div>
               </div>
@@ -472,300 +551,565 @@ export default function UploadPage() {
           )}
         </AnimatePresence>
 
-        {/* Main Upload Form */}
-        <form onSubmit={handleUploadSubmit} className="space-y-8">
-          {/* Section 1: Dropzone & File Selection */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-sm sm:text-base font-semibold text-white">1. Select Video Footage</h2>
-                <p className="text-xs text-white/40">Direct chunked upload handles large files (MP4, MOV, WEBM)</p>
+        {/* Global Error Banner */}
+        {uploadError && (
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{uploadError}</span>
+          </div>
+        )}
+
+        {/* STEP 1: Video File & Metadata Form */}
+        {currentStep === "form" && (
+          <form onSubmit={handleUploadSubmit} className="space-y-8">
+            {/* Section 1: Dropzone & File Selection */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-sm sm:text-base font-semibold text-white">1. Select Video Footage</h2>
+                  <p className="text-xs text-white/40">Direct chunked upload handles large files (MP4, MOV, WEBM)</p>
+                </div>
+                {selectedFile && !isUploading && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null)
+                      if (previewUrl) URL.revokeObjectURL(previewUrl)
+                      setPreviewUrl(null)
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Remove file</span>
+                  </button>
+                )}
               </div>
-              {selectedFile && !isUploading && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFile(null)
-                    if (previewUrl) URL.revokeObjectURL(previewUrl)
-                    setPreviewUrl(null)
-                  }}
-                  className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
+
+              {!selectedFile ? (
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? "border-[#fbbf24] bg-[#fbbf24]/5 scale-[0.99]"
+                      : "border-white/15 hover:border-white/30 bg-black/20 hover:bg-black/30"
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
-                  <span>Remove file</span>
-                </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleFileChange(e.target.files[0])
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#fbbf24] mb-4">
+                    <UploadCloud className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-semibold text-white/90 mb-1">Drag and drop your video file here</h3>
+                  <p className="text-xs text-white/40 max-w-sm mb-4">
+                    Or click to browse from your computer. Large camera masters and exports are supported via chunked upload.
+                  </p>
+                  <span className="px-4 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 text-white/90 border border-white/10 transition-colors">
+                    Browse Files
+                  </span>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-6 items-center">
+                  {/* Video Preview Player */}
+                  <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center">
+                    {previewUrl && (
+                      <video
+                        src={previewUrl}
+                        controls
+                        playsInline
+                        className="w-full h-full object-contain"
+                      />
+                    )}
+                  </div>
+
+                  {/* File Metadata Overview */}
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl bg-black/30 border border-white/5 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white/40">File Name:</span>
+                        <span className="font-mono text-white/80 truncate max-w-[180px]">{selectedFile.name}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white/40">File Size:</span>
+                        <span className="font-mono text-white/80">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white/40">Type:</span>
+                        <span className="font-mono text-white/80">{selectedFile.type || "video/mp4"}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[#fbbf24]/80 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Thumbnails will be automatically generated after video upload.</span>
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
-            {!selectedFile ? (
-              <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
-                  isDragging
-                    ? "border-[#fbbf24] bg-[#fbbf24]/5 scale-[0.99]"
-                    : "border-white/15 hover:border-white/30 bg-black/20 hover:bg-black/30"
-                }`}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      handleFileChange(e.target.files[0])
-                    }
-                  }}
-                  className="hidden"
-                />
-                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#fbbf24] mb-4">
-                  <UploadCloud className="w-8 h-8" />
-                </div>
-                <h3 className="text-base font-semibold text-white/90 mb-1">Drag and drop your video file here</h3>
-                <p className="text-xs text-white/40 max-w-sm mb-4">
-                  Or click to browse from your computer. Large camera masters and exports are supported via chunked upload.
-                </p>
-                <span className="px-4 py-2 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 text-white/90 border border-white/10 transition-colors">
-                  Browse Files
-                </span>
-              </div>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-6 items-center">
-                {/* Video Preview Player */}
-                <div className="relative aspect-video rounded-2xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center">
-                  {previewUrl && (
-                    <video
-                      src={previewUrl}
-                      controls
-                      playsInline
-                      className="w-full h-full object-contain"
-                    />
-                  )}
-                </div>
-
-                {/* File Metadata Overview */}
-                <div className="space-y-3">
-                  <div className="p-4 rounded-xl bg-black/30 border border-white/5 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/40">Filename:</span>
-                      <span className="font-mono text-white/80 truncate max-w-[200px]">{selectedFile.name}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/40">File Size:</span>
-                      <span className="font-semibold text-white/90">
-                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                        {selectedFile.size > 1024 * 1024 * 1024 && (
-                          <span className="text-[#fbbf24] ml-1">
-                            ({(selectedFile.size / (1024 * 1024 * 1024)).toFixed(2)} GB)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/40">File Type:</span>
-                      <span className="font-mono text-white/80">{selectedFile.type || "video/quicktime"}</span>
-                    </div>
-                  </div>
-                  <p className="text-[11px] text-white/40 italic">
-                    ✓ Video validated. Ready for direct signed streaming upload.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Section 2: Metadata Specification */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl space-y-6">
-            <div>
-              <h2 className="text-sm sm:text-base font-semibold text-white">2. Project Metadata</h2>
-              <p className="text-xs text-white/40">Specify titles, categories, and tags for the public portfolio</p>
-            </div>
-
-            <div className="grid sm:grid-cols-2 gap-5">
+            {/* Section 2: Metadata Details */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl space-y-6">
               <div>
-                <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                  Title <span className="text-[#d97706]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Midnight Motion"
-                  required
-                  disabled={isUploading}
-                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] transition-all"
-                />
+                <h2 className="text-sm sm:text-base font-semibold text-white">2. Project Details</h2>
+                <p className="text-xs text-white/40">Displayed in the public editorial gallery</p>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                  Subtitle
-                </label>
-                <input
-                  type="text"
-                  value={subtitle}
-                  onChange={(e) => setSubtitle(e.target.value)}
-                  placeholder="e.g. A Study in Movement"
-                  disabled={isUploading}
-                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                Portfolio Category <span className="text-[#d97706]">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-2">Project Title *</label>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Velvet Horizon"
+                    required
                     disabled={isUploading}
-                    className={`py-3 px-4 rounded-xl text-xs font-semibold tracking-wider uppercase transition-all flex items-center justify-center gap-2 ${
-                      category === cat
-                        ? "bg-[#d97706] text-black shadow-lg shadow-[#d97706]/20 border border-[#fbbf24]"
-                        : "bg-black/30 border border-white/10 text-white/60 hover:text-white hover:border-white/20"
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>{cat}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                Description
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="Cinematic exploration of movement and shadow crafted through meticulous pacing and dramatic color grading..."
-                disabled={isUploading}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] transition-all resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-medium tracking-wider text-white/60 uppercase mb-2">
-                Tags
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 rounded-full text-xs bg-white/10 border border-white/15 text-white/80 flex items-center gap-1.5"
-                  >
-                    <span>{tag}</span>
-                    {!isUploading && (
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="text-white/40 hover:text-white"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === ",") {
-                      e.preventDefault()
-                      addTag()
-                    }
-                  }}
-                  placeholder="Type a tag and press Add..."
-                  disabled={isUploading}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-xs focus:outline-none focus:border-[#d97706] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={addTag}
-                  disabled={isUploading || !tagInput.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium transition-colors disabled:opacity-40"
-                >
-                  Add Tag
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Upload Action & Live Progress Feedback */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl">
-            {uploadError && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span>{uploadError}</span>
-              </div>
-            )}
-
-            {isUploading && uploadProgress && (
-              <div className="mb-6 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-white/80">{uploadStatusText}</span>
-                  <span className="font-mono text-[#fbbf24] font-bold text-sm">{uploadProgress.percent}%</span>
-                </div>
-
-                <div className="w-full h-3 rounded-full bg-black/50 overflow-hidden p-0.5 border border-white/10">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-[#fbbf24] via-[#d97706] to-[#b45309]"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${uploadProgress.percent}%` }}
-                    transition={{ ease: "easeOut", duration: 0.2 }}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] transition-all"
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] text-white/40">
-                  <span>
-                    {(uploadProgress.loadedBytes / (1024 * 1024)).toFixed(1)} MB of{" "}
-                    {(uploadProgress.totalBytes / (1024 * 1024)).toFixed(1)} MB
-                  </span>
-                  <span>Chunk {uploadProgress.chunkIndex} of {uploadProgress.totalChunks} (20MB Slices)</span>
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-2">Subtitle / Genre</label>
+                  <input
+                    type="text"
+                    value={subtitle}
+                    onChange={(e) => setSubtitle(e.target.value)}
+                    placeholder="e.g. Commercial Brand Spot"
+                    disabled={isUploading}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] transition-all"
+                  />
                 </div>
               </div>
-            )}
 
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              {!isUploading ? (
-                <button
-                  type="submit"
-                  disabled={!selectedFile || !title.trim()}
-                  className="w-full sm:w-auto px-8 py-4 rounded-2xl font-semibold text-sm text-black bg-gradient-to-r from-[#fbbf24] to-[#d97706] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-[#d97706]/20 flex items-center justify-center gap-2.5"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Direct Upload & Publish to Portfolio</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCancelUpload}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-medium text-xs text-red-300 bg-red-950/60 hover:bg-red-900/60 border border-red-500/30 transition-all flex items-center justify-center gap-2"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Cancel Upload</span>
-                </button>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-2 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[#fbbf24]" />
+                    <span>Portfolio Category</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCategory(cat)}
+                        disabled={isUploading}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-medium transition-all ${
+                          category === cat
+                            ? "bg-[#d97706] text-black font-semibold shadow-md shadow-[#d97706]/20"
+                            : "bg-black/30 border border-white/10 text-white/60 hover:text-white hover:border-white/20"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-white/70 mb-2 flex items-center gap-1.5">
+                    <TagIcon className="w-3.5 h-3.5 text-[#fbbf24]" />
+                    <span>Tags (Up to 10)</span>
+                  </label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          addTag()
+                        }
+                      }}
+                      placeholder="Add tag and press Enter..."
+                      disabled={isUploading}
+                      className="flex-1 px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-xs focus:outline-none focus:border-[#d97706] transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={addTag}
+                      disabled={isUploading || !tagInput.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-white font-medium border border-white/10 transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[11px] text-white/80"
+                      >
+                        <span>{t}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeTag(t)}
+                          disabled={isUploading}
+                          className="hover:text-red-400 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70 mb-2">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Editorial notes, camera gear, pacing details or client context..."
+                  rows={3}
+                  disabled={isUploading}
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 text-white placeholder-white/20 text-sm focus:outline-none focus:border-[#d97706] focus:ring-1 focus:ring-[#d97706] transition-all resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Section 3: Upload Action & Live Progress Feedback */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-[#1c120c]/70 border border-white/10 backdrop-blur-xl">
+              {isUploading && uploadProgress && (
+                <div className="mb-6 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-white/80">{uploadStatusText}</span>
+                    <span className="font-mono text-[#fbbf24] font-bold text-sm">{uploadProgress.percent}%</span>
+                  </div>
+
+                  <div className="w-full h-3 rounded-full bg-black/50 overflow-hidden p-0.5 border border-white/10">
+                    <motion.div
+                      className="h-full rounded-full bg-gradient-to-r from-[#fbbf24] via-[#d97706] to-[#b45309]"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${uploadProgress.percent}%` }}
+                      transition={{ ease: "easeOut", duration: 0.2 }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-white/40">
+                    <span>
+                      {(uploadProgress.loadedBytes / (1024 * 1024)).toFixed(1)} MB of{" "}
+                      {(uploadProgress.totalBytes / (1024 * 1024)).toFixed(1)} MB
+                    </span>
+                    <span>Chunk {uploadProgress.chunkIndex} of {uploadProgress.totalChunks} (20MB Slices)</span>
+                  </div>
+                </div>
               )}
 
-              {selectedFile && !isUploading && (
-                <span className="text-xs text-white/40">
-                  File will upload directly to Cloudinary without streaming through Vercel.
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                {!isUploading ? (
+                  <button
+                    type="submit"
+                    disabled={!selectedFile || !title.trim()}
+                    className="w-full sm:w-auto px-8 py-4 rounded-2xl font-semibold text-sm text-black bg-gradient-to-r from-[#fbbf24] to-[#d97706] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-[#d97706]/20 flex items-center justify-center gap-2.5"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Upload Video & Choose Thumbnail</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCancelUpload}
+                    className="w-full sm:w-auto px-6 py-3.5 rounded-2xl font-medium text-xs text-red-300 bg-red-950/60 hover:bg-red-900/60 border border-red-500/30 transition-all flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Cancel Upload</span>
+                  </button>
+                )}
+
+                {selectedFile && !isUploading && (
+                  <span className="text-xs text-white/40">
+                    Step 1 of 2: Video file uploads securely to Cloudinary before thumbnail selection.
+                  </span>
+                )}
+              </div>
+            </div>
+          </form>
+        )}
+
+        {/* STEP 2: Thumbnail Selection & Confirmation */}
+        {currentStep === "thumbnail_selection" && uploadedVideoResult && (
+          <div className="space-y-8">
+            {/* Step Breadcrumb Banner */}
+            <div className="p-6 rounded-2xl bg-[#1c120c]/80 border border-[#d97706]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] tracking-[0.25em] text-[#fbbf24] uppercase font-bold">
+                  Step 2 of 2: Thumbnail Selection
                 </span>
-              )}
+                <h2 className="text-lg font-bold text-white mt-1">
+                  Choose Cover Thumbnail for &quot;{title}&quot;
+                </h2>
+                <p className="text-xs text-white/50 mt-0.5">
+                  Select an automatically extracted high-resolution video frame, or upload custom branded artwork.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentStep("form")}
+                className="self-start sm:self-auto px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-white/70 hover:text-white transition-all flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Video Form</span>
+              </button>
+            </div>
+
+            <div className="grid lg:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Frame Candidates & Custom Upload (7 cols) */}
+              <div className="lg:col-span-7 space-y-6">
+                {/* 1. Candidate Frames */}
+                <div className="p-6 rounded-3xl bg-[#1c120c]/70 border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <Film className="w-4 h-4 text-[#fbbf24]" />
+                        <span>Automated Video Frame Candidates</span>
+                      </h3>
+                      <p className="text-xs text-white/40">Click any frame to select it as the public portfolio cover</p>
+                    </div>
+                    <span className="text-[11px] font-mono text-[#fbbf24] bg-[#fbbf24]/10 border border-[#fbbf24]/20 px-2 py-0.5 rounded-full">
+                      {thumbnailCandidates.length} Frames
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                    {thumbnailCandidates.map((candidate) => {
+                      const isSelected = selectedPosterUrl === candidate.url
+                      return (
+                        <div
+                          key={candidate.id}
+                          onClick={() => setSelectedPosterUrl(candidate.url)}
+                          className={`relative aspect-[16/10] rounded-xl overflow-hidden cursor-pointer transition-all border ${
+                            isSelected
+                              ? "border-[#fbbf24] ring-2 ring-[#fbbf24] shadow-lg shadow-[#d97706]/30 scale-[1.02]"
+                              : "border-white/10 hover:border-white/30 opacity-75 hover:opacity-100"
+                          }`}
+                        >
+                          <img
+                            src={candidate.url}
+                            alt={`Frame at ${candidate.label}`}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+
+                          {/* Timestamp Pill */}
+                          <div className="absolute bottom-2 left-2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 border border-white/10 text-[10px] font-mono text-white/90">
+                            <Clock className="w-2.5 h-2.5 text-[#fbbf24]" />
+                            <span>{candidate.label}</span>
+                          </div>
+
+                          {/* Selected Checkmark Badge */}
+                          {isSelected && (
+                            <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#fbbf24] text-black flex items-center justify-center shadow-md">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Custom Artwork Upload */}
+                <div className="p-6 rounded-3xl bg-[#1c120c]/70 border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-[#fbbf24]" />
+                        <span>Upload Custom Cover Image</span>
+                      </h3>
+                      <p className="text-xs text-white/40">Upload a custom JPG, PNG, or WebP cover artwork</p>
+                    </div>
+                  </div>
+
+                  <input
+                    ref={customThumbInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        handleCustomThumbnailChange(e.target.files[0])
+                      }
+                    }}
+                    className="hidden"
+                  />
+
+                  {customThumbnailUrl ? (
+                    <div
+                      onClick={() => setSelectedPosterUrl(customThumbnailUrl)}
+                      className={`relative aspect-[16/10] rounded-2xl overflow-hidden cursor-pointer transition-all border max-w-sm ${
+                        selectedPosterUrl === customThumbnailUrl
+                          ? "border-[#fbbf24] ring-2 ring-[#fbbf24] shadow-lg shadow-[#d97706]/30"
+                          : "border-white/15 hover:border-white/30"
+                      }`}
+                    >
+                      <img
+                        src={customThumbnailUrl}
+                        alt="Custom Thumbnail"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                      <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-[#d97706] text-black font-semibold text-[10px] tracking-wide uppercase">
+                          Custom Artwork
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            customThumbInputRef.current?.click()
+                          }}
+                          className="px-2 py-0.5 rounded-md bg-white/20 hover:bg-white/30 text-[10px] text-white transition-colors"
+                        >
+                          Replace
+                        </button>
+                      </div>
+                      {selectedPosterUrl === customThumbnailUrl && (
+                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#fbbf24] text-black flex items-center justify-center shadow-md">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isUploadingCustomThumb}
+                      onClick={() => customThumbInputRef.current?.click()}
+                      className="w-full p-6 border-2 border-dashed border-white/15 hover:border-[#fbbf24]/50 rounded-2xl bg-black/20 hover:bg-black/30 flex flex-col items-center justify-center gap-2 text-center transition-all disabled:opacity-50"
+                    >
+                      {isUploadingCustomThumb ? (
+                        <div className="flex items-center gap-2 text-xs text-[#fbbf24]">
+                          <div className="w-4 h-4 border-2 border-[#fbbf24]/30 border-t-[#fbbf24] rounded-full animate-spin" />
+                          <span>Uploading cover to Cloudinary...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <ImageIcon className="w-6 h-6 text-white/40" />
+                          <span className="text-xs font-medium text-white/80">
+                            Click to upload custom JPG, PNG, or WebP
+                          </span>
+                          <span className="text-[10px] text-white/30">
+                            Recommended: 16:10 or 16:9 ratio, max 10MB
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Live Portfolio Card Preview (5 cols) */}
+              <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-8">
+                <div className="p-6 rounded-3xl bg-[#1c120c]/70 border border-white/10 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-[#fbbf24]" />
+                      <span>Live Public Gallery Preview</span>
+                    </h3>
+                    <span className="text-[10px] font-mono text-white/40">16:10 Ratio</span>
+                  </div>
+
+                  {/* Portfolio Card Mockup */}
+                  <div className="relative aspect-[16/10] rounded-2xl overflow-hidden bg-[#2d1b11] border border-white/10 shadow-2xl">
+                    {selectedPosterUrl ? (
+                      <img
+                        src={selectedPosterUrl}
+                        alt="Selected Poster Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/20 text-xs">
+                        No poster selected
+                      </div>
+                    )}
+
+                    {/* Editorial Overlay */}
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background:
+                          "linear-gradient(to top, oklch(0.22 0.04 42 / 0.95) 0%, oklch(0.22 0.04 42 / 0.3) 45%, transparent 100%)",
+                      }}
+                    />
+
+                    {/* Card Content Overlay */}
+                    <div className="absolute inset-0 p-5 flex flex-col justify-between pointer-events-none">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[10px] font-medium tracking-wider text-[#fbbf24] uppercase">
+                          {category}
+                        </span>
+                        <span className="text-2xl font-bold text-white/20">01</span>
+                      </div>
+
+                      <div>
+                        <h4 className="text-base font-bold text-white tracking-tight">{title}</h4>
+                        {subtitle && <p className="text-xs text-white/70 mt-0.5">{subtitle}</p>}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {tags.slice(0, 3).map((t) => (
+                            <span
+                              key={t}
+                              className="text-[9px] px-2 py-0.5 rounded-md bg-white/10 text-white/80"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Poster Metadata */}
+                  <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40">Poster Type:</span>
+                      <span className="text-[#fbbf24] font-medium">
+                        {selectedPosterUrl === customThumbnailUrl ? "Custom Uploaded Artwork" : "Video Frame Transformation"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40">Delivery:</span>
+                      <span className="text-white/70">f_auto, q_auto:eco, w_800 (~40-90 KB)</span>
+                    </div>
+                  </div>
+
+                  {/* Final Publish Button */}
+                  <button
+                    type="button"
+                    onClick={handleFinalPublish}
+                    disabled={isRegistering || !selectedPosterUrl}
+                    className="w-full py-4 px-6 rounded-2xl font-semibold text-sm text-black bg-gradient-to-r from-[#fbbf24] to-[#d97706] hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xl shadow-[#d97706]/20 flex items-center justify-center gap-2.5"
+                  >
+                    {isRegistering ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        <span>Registering & Publishing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        <span>Confirm & Publish to Portfolio</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </form>
+        )}
       </div>
     </div>
   )

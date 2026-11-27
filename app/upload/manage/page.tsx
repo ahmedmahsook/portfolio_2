@@ -667,12 +667,24 @@ export default function ManageVideosPage() {
                 {/* Poster & Badges */}
                 <div className="relative aspect-video bg-stone-950 overflow-hidden group">
                   <img
-                    src={video.poster_url}
+                    src={
+                      !video.poster_url || video.poster_url.includes("_poster.jpg")
+                        ? (video.source_type === "local"
+                            ? `/video/thumb_opt_${video.cloudinary_public_id.replace(/^portfolio\//, "").replace(/^\/?video\//, "").replace(/^opt_/, "").replace(/\.[^/.]+$/, "")}.jpg`
+                            : `https://res.cloudinary.com/driapshxj/video/upload/f_auto,q_auto:eco,w_800,c_limit,so_1/portfolio/${video.cloudinary_public_id.replace(/^portfolio\//, "")}.jpg`)
+                        : video.poster_url
+                    }
                     alt={video.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
-                      // Fallback placeholder if poster image is not yet rendered
-                      ;(e.target as any).src = "https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=800&q=80"
+                      const target = e.target as HTMLImageElement
+                      const cleanBase = video.cloudinary_public_id.replace(/^portfolio\//, "")
+                      const fallback = `https://res.cloudinary.com/driapshxj/video/upload/f_auto,q_auto:eco,w_800,c_limit,so_1/portfolio/${cleanBase}.jpg`
+                      if (target.src !== fallback) {
+                        target.src = fallback
+                      } else {
+                        target.src = "/placeholder.jpg"
+                      }
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/20 to-transparent opacity-80" />

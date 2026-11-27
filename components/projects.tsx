@@ -634,8 +634,9 @@ export function Projects() {
           // Heal broken or missing poster URLs (e.g. legacy /image/upload/..._poster.jpg)
           const isPosterBroken =
             !v.poster_url ||
-            v.poster_url.includes("/image/upload/") ||
-            v.poster_url.includes("_poster.jpg")
+            v.poster_url.includes("_poster.jpg") ||
+            v.poster_url.endsWith(".mp4") ||
+            v.poster_url.endsWith(".mov")
           const posterUrl = isPosterBroken ? posterForVideoPath(videoRef) : v.poster_url
 
           return {

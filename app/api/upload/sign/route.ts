@@ -29,6 +29,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const body = await request.json().catch(() => ({}))
+    
+    // Strict validation: only 'image' or 'video' allowed
+    if (body?.resource_type && body.resource_type !== 'image' && body.resource_type !== 'video') {
+      return NextResponse.json({ error: 'Invalid resource_type. Must be "image" or "video".' }, { status: 400 })
+    }
+    const resourceType = body?.resource_type === 'image' ? 'image' : 'video'
+
     // 3. Strict parameter enforcement: only allow 'portfolio' folder
     const timestamp = Math.floor(Date.now() / 1000)
     const folder = 'portfolio'
@@ -48,7 +56,8 @@ export async function POST(request: NextRequest) {
       apiKey,
       cloudName,
       folder,
-      uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+      resourceType,
+      uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
     })
   } catch (err: any) {
     console.error('[UPLOAD_SIGN_ERROR]', err)

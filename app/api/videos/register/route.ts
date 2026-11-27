@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/auth'
 import { getSupabaseAdmin, cleanEnv, VideoCategory } from '@/lib/supabase'
+import { isValidPosterUrl } from '@/lib/thumbnails'
 import { v2 as cloudinary } from 'cloudinary'
 
 export async function POST(request: NextRequest) {
@@ -125,11 +126,26 @@ export async function POST(request: NextRequest) {
       video_url || `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto/portfolio/${cleanBase}.mp4`
     
     // Cloudinary video thumbnail requires /video/upload/ and .jpg extension
-    const defaultPosterUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto:eco,w_800,so_1/portfolio/${cleanBase}.jpg`
-    const finalPosterUrl =
-      poster_url && !poster_url.includes('/image/upload/') && !poster_url.includes('_poster.jpg')
-        ? poster_url
-        : defaultPosterUrl
+    const defaultPosterUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_auto,q_auto:eco,w_800,c_limit,so_1/portfolio/${cleanBase}.jpg`
+    
+    let finalPosterUrl = defaultPosterUrl
+    if (poster_url) {
+      if (typeof poster_url !== 'string') {
+        return NextResponse.json({ error: 'Poster URL must be a string.' }, { status: 400 })
+      }
+      const trimmedPoster = poster_url.trim()
+      // Reject legacy broken template gracefully by falling back to verified Cloudinary video frame
+      if (trimmedPoster.includes('_poster.jpg')) {
+        finalPosterUrl = defaultPosterUrl
+      } else if (!isValidPosterUrl(trimmedPoster, cloudName)) {
+        return NextResponse.json(
+          { error: 'Invalid poster URL. Must be a valid Cloudinary asset under the configured account.' },
+          { status: 400 }
+        )
+      } else {
+        finalPosterUrl = trimmedPoster
+      }
+    }
 
     // 5. Database registration in Supabase
     try {

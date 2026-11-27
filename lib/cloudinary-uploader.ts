@@ -168,3 +168,58 @@ export async function uploadVideoDirectToCloudinary(options: UploadOptions): Pro
 
   return finalResult
 }
+
+/**
+ * Uploads a custom thumbnail image (JPG, PNG, WebP) directly to Cloudinary.
+ */
+export async function uploadCustomThumbnailToCloudinary(
+  file: File,
+  signal?: AbortSignal
+): Promise<{ public_id: string; secure_url: string; poster_url: string }> {
+  // 1. Request signed image upload params
+  const signResponse = await fetch('/api/upload/sign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resource_type: 'image' }),
+    signal,
+  })
+
+  if (!signResponse.ok) {
+    const errorData = await signResponse.json().catch(() => ({}))
+    throw new Error(errorData.error || `Upload authorization failed (HTTP ${signResponse.status}).`)
+  }
+
+  const { signature, timestamp, apiKey, cloudName, folder, uploadUrl } = await signResponse.json()
+
+  // 2. Direct upload to Cloudinary
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('api_key', apiKey)
+  formData.append('timestamp', timestamp.toString())
+  formData.append('signature', signature)
+  formData.append('folder', folder)
+
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'POST',
+    body: formData,
+    signal,
+  })
+
+  if (!uploadResponse.ok) {
+    const errBody = await uploadResponse.text()
+    throw new Error(`Thumbnail upload failed (${uploadResponse.status}): ${errBody}`)
+  }
+
+  const resJson = await uploadResponse.json()
+  const publicId = resJson.public_id
+  const format = resJson.format || 'jpg'
+
+  // Format high-quality, lightweight delivery URL (w_800, eco quality)
+  const posterUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto:eco,w_800,c_limit/${publicId}.${format}`
+
+  return {
+    public_id: publicId,
+    secure_url: resJson.secure_url,
+    poster_url: posterUrl,
+  }
+}

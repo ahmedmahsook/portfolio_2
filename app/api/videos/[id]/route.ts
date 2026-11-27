@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminSession } from '@/lib/auth'
 import { getSupabaseAdmin, cleanEnv, VideoCategory } from '@/lib/supabase'
+import { isValidPosterUrl } from '@/lib/thumbnails'
 import { v2 as cloudinary } from 'cloudinary'
 
 interface RouteContext {
@@ -107,6 +108,26 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         return NextResponse.json({ error: 'Display order must be a non-negative integer.' }, { status: 400 })
       }
       updatePayload.display_order = display_order
+    }
+
+    // 7. Poster URL validation
+    if (body.poster_url !== undefined) {
+      if (typeof body.poster_url !== 'string' || !body.poster_url.trim()) {
+        return NextResponse.json({ error: 'Poster URL must be a non-empty string.' }, { status: 400 })
+      }
+      const trimmedPoster = body.poster_url.trim()
+      const cloudName =
+        cleanEnv(process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) ||
+        cleanEnv(process.env.CLOUDINARY_CLOUD_NAME) ||
+        'driapshxj'
+
+      if (!isValidPosterUrl(trimmedPoster, cloudName)) {
+        return NextResponse.json(
+          { error: 'Invalid poster URL. Must be a valid Cloudinary asset under the configured account.' },
+          { status: 400 }
+        )
+      }
+      updatePayload.poster_url = trimmedPoster
     }
 
     if (Object.keys(updatePayload).length === 0) {
