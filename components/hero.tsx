@@ -194,7 +194,7 @@ export function Hero() {
               variants={stagger.item} 
               className="hero-minimal-profession mb-2 sm:mb-3 text-[11px] sm:text-xs tracking-[0.2em]"
             >
-              Video Editor &amp; Performance Marketer
+              Videographer &amp; Editor
             </motion.p>
 
             {/* Name — guaranteed single line on desktop */}
@@ -234,17 +234,17 @@ export function Hero() {
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, ease: easeLuxury }}
-              className="relative w-full max-w-[210px] xs:max-w-[240px] sm:max-w-[340px] lg:max-w-[440px] xl:max-w-[480px] aspect-[4/5] mx-auto lg:mr-0 select-none"
+              className="relative w-full max-w-[280px] xs:max-w-[310px] sm:max-w-[350px] md:max-w-[380px] lg:max-w-[420px] xl:max-w-[460px] aspect-[4/5] mx-auto lg:mr-0 select-none"
             >
               {/* Elegant editorial image frame harmonized with the website */}
-              <div className="relative w-full h-full rounded-xl sm:rounded-2xl overflow-hidden border border-border/40 shadow-sm bg-[var(--card)]">
+              <div className="relative w-full h-full rounded-2xl overflow-hidden border border-border/40 shadow-sm bg-[var(--card)]">
                 <Image
                   src={PORTRAIT_SRC}
-                  alt="Moideen Rahil Monaco — Visual Artist & Director"
+                  alt="Moideen Rahil Monaco — Videographer & Editor"
                   fill
                   priority
-                  sizes="(max-width: 640px) 240px, (max-width: 1024px) 380px, 480px"
-                  className="object-cover object-[50%_18%] scale-[1.28] transition-transform duration-700 ease-out hover:scale-[1.30]"
+                  sizes="(max-width: 640px) 310px, (max-width: 1024px) 380px, 460px"
+                  className="object-cover object-[50%_15%] transition-transform duration-700 ease-out hover:scale-[1.03]"
                 />
                 {/* Subtle warm luxury color grading tint: blends the photograph naturally with the website cream & terracotta palette */}
                 <div 

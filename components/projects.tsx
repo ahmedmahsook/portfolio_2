@@ -299,12 +299,37 @@ function ProjectCard({
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
       setShouldLoadVideo(false)
       setIsVideoReady(false)
+      if (videoRef.current) {
+        videoRef.current.pause()
+        videoRef.current.removeAttribute("src")
+        videoRef.current.load()
+      }
     }
 
     return () => {
       if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current)
     }
   }, [isHovered, isVisible, isModalOpen, canHover, previewSrc])
+
+  // Explicitly trigger playback and ensure browser autoplay policy compliance
+  useEffect(() => {
+    if (shouldLoadVideo && videoRef.current) {
+      const video = videoRef.current
+      video.muted = true
+      video.defaultMuted = true
+      video.playsInline = true
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsVideoReady(true)
+          })
+          .catch(() => {
+            // Autoplay gracefully handled if user navigated away or blocked
+          })
+      }
+    }
+  }, [shouldLoadVideo, videoSrc])
 
   // Explicitly unload video decoder and cancel buffer when card leaves viewport or modal opens
   useEffect(() => {
@@ -330,7 +355,16 @@ function ProjectCard({
         if (canHover) setIsHovered(true)
       }}
       onMouseLeave={() => {
-        if (canHover) setIsHovered(false)
+        if (canHover) {
+          setIsHovered(false)
+          setShouldLoadVideo(false)
+          setIsVideoReady(false)
+          if (videoRef.current) {
+            videoRef.current.pause()
+            videoRef.current.removeAttribute("src")
+            videoRef.current.load()
+          }
+        }
       }}
       onClick={onSelect}
       data-cursor="project"
@@ -340,20 +374,30 @@ function ProjectCard({
         {/* Video layer: Only mounted on desktop hover when in view and modal is closed */}
         {shouldLoadVideo && (
           <video
-            ref={videoRef}
+            ref={(el) => {
+              videoRef.current = el
+              if (el) {
+                el.muted = true
+                el.defaultMuted = true
+              }
+            }}
             src={videoSrc}
             poster={project.poster}
             muted
             loop
             playsInline
             autoPlay
-            preload="none"
+            preload="auto"
             onError={() => {
-              if (videoSrc !== project.video) setVideoSrc(project.video)
+              const fallback = playbackSrc(project.video)
+              if (videoSrc !== fallback) {
+                setVideoSrc(fallback)
+              }
             }}
             onLoadedData={() => setIsVideoReady(true)}
             onCanPlay={() => setIsVideoReady(true)}
-            className={`absolute inset-0 w-full h-full object-cover z-[1] transition-opacity duration-500 ${
+            onPlaying={() => setIsVideoReady(true)}
+            className={`absolute inset-0 w-full h-full object-cover z-[1] transition-opacity duration-300 ${
               isVideoReady ? "opacity-100" : "opacity-0"
             }`}
           />
@@ -374,7 +418,7 @@ function ProjectCard({
           }}
           className={`absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out ${
             isHovered ? "scale-105" : "scale-100"
-          } transition-opacity duration-500 ${isVideoReady ? "opacity-0" : "opacity-100"} z-[2]`}
+          } transition-opacity duration-300 ${isVideoReady ? "opacity-0 pointer-events-none" : "opacity-100"} z-[2]`}
           loading={index < 3 ? "eager" : "lazy"}
           decoding="async"
         />
