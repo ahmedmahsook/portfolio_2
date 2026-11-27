@@ -191,7 +191,7 @@ function previewVideoSrc(videoPath: string) {
   const base = toVideoBaseName(videoPath)
   if (videoPath.startsWith("portfolio/")) {
     // Highly optimized lightweight video preview: 540p width, eco quality, stripped audio for ultra-fast preview
-    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_540,c_limit,an_none/portfolio/${base}.mp4`
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/video/upload/f_auto,q_auto:eco,w_540,c_limit,ac_none/portfolio/${base}.mp4`
   }
   // Local video playback
   return `/video/opt_${base}.mp4`
